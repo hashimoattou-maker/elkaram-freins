@@ -40,11 +40,32 @@ app.use('/api/stock', stock_1.default);
 app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-const frontendDist = path_1.default.resolve(__dirname, '../../frontend/dist');
-if (fs_1.default.existsSync(frontendDist)) {
+const possiblePaths = [
+    path_1.default.resolve(__dirname, '../../frontend/dist'),
+    path_1.default.resolve(__dirname, '../../../frontend/dist'),
+    path_1.default.resolve(process.cwd(), 'frontend/dist'),
+    path_1.default.resolve(process.cwd(), '../frontend/dist'),
+    path_1.default.resolve(process.cwd(), '../../frontend/dist'),
+];
+let frontendDist = '';
+for (const p of possiblePaths) {
+    if (fs_1.default.existsSync(p)) {
+        frontendDist = p;
+        break;
+    }
+}
+console.log('__dirname:', __dirname);
+console.log('process.cwd():', process.cwd());
+console.log('frontendDist resolved to:', frontendDist || 'NOT FOUND');
+if (frontendDist) {
     app.use(express_1.default.static(frontendDist));
     app.get('*', (_req, res) => {
         res.sendFile(path_1.default.join(frontendDist, 'index.html'));
+    });
+}
+else {
+    app.get('/', (_req, res) => {
+        res.json({ error: 'Frontend not found', checked: possiblePaths });
     });
 }
 app.use((err, _req, res, _next) => {
