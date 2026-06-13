@@ -43,36 +43,12 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-const possiblePaths = [
-  path.resolve(__dirname, '../../frontend/dist'),
-  path.resolve(__dirname, '../../../frontend/dist'),
-  path.resolve(process.cwd(), 'frontend/dist'),
-  path.resolve(process.cwd(), '../frontend/dist'),
-  path.resolve(process.cwd(), '../../frontend/dist'),
-];
-
-let frontendDist = '';
-for (const p of possiblePaths) {
-  if (fs.existsSync(p)) {
-    frontendDist = p;
-    break;
-  }
-}
-
-console.log('__dirname:', __dirname);
-console.log('process.cwd():', process.cwd());
-console.log('frontendDist resolved to:', frontendDist || 'NOT FOUND');
-
-if (frontendDist) {
-  app.use(express.static(frontendDist));
-  app.get('*', (_req, res) => {
-    res.sendFile(path.join(frontendDist, 'index.html'));
-  });
-} else {
-  app.get('/', (_req, res) => {
-    res.json({ error: 'Frontend not found', checked: possiblePaths });
-  });
-}
+const frontendDist = path.resolve(__dirname, '../public');
+console.log('Serving frontend from:', frontendDist);
+app.use(express.static(frontendDist));
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
+});
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error:', err);
