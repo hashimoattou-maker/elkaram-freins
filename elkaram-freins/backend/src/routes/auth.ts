@@ -45,7 +45,7 @@ router.post('/login', async (req: AuthRequest, res: Response) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        full_name: user.full_name,
+        fullName: user.full_name,
         role: user.role,
       },
     });
@@ -57,7 +57,7 @@ router.post('/login', async (req: AuthRequest, res: Response) => {
 router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT id, username, email, full_name, role, active, created_at FROM users WHERE id = ?',
+      'SELECT id, username, email, full_name as fullName, role, active, created_at FROM users WHERE id = ?',
       [req.user!.id]
     ) as any;
     const user = rows[0];

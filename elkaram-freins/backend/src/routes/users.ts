@@ -10,7 +10,7 @@ router.use(authenticate);
 
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
-    const [users] = await pool.execute('SELECT id, username, email, full_name, role, active, created_at FROM users ORDER BY full_name');
+    const [users] = await pool.execute('SELECT id, username, email, full_name as fullName, role, active, created_at FROM users ORDER BY full_name');
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: 'Erreur lors de la récupération des utilisateurs' });
@@ -48,7 +48,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     );
 
     const [userRows] = await pool.execute(
-      'SELECT id, username, email, full_name, role, active, created_at FROM users WHERE id = ?',
+      'SELECT id, username, email, full_name as fullName, role, active, created_at FROM users WHERE id = ?',
       [id]
     ) as any;
     res.status(201).json(userRows[0]);
@@ -100,7 +100,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     );
 
     const [userRows] = await pool.execute(
-      'SELECT id, username, email, full_name, role, active, created_at FROM users WHERE id = ?',
+      'SELECT id, username, email, full_name as fullName, role, active, created_at FROM users WHERE id = ?',
       [id]
     ) as any;
     res.json(userRows[0]);
