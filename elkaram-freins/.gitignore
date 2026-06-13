@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+*.db
+*.db-shm
+*.db-wal
+uploads/*
+!uploads/.gitkeep
+server.log
+.DS_Store
+Thumbs.db
