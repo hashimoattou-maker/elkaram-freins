@@ -57,6 +57,7 @@ function mapDoc(d) {
         supplierId: d.supplier_id,
         supplierName: d.supplier_name,
         supplier: d.supplier_name ? { id: d.supplier_id, name: d.supplier_name, code: d.supplier_code } : undefined,
+        matricule: d.matricule || '',
         subtotal: Number(d.subtotal || 0),
         taxRate: Number(d.tax_rate || 0),
         taxAmount: Number(d.tax_amount || 0),
@@ -211,7 +212,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', (0, auth_1.requireRole)('admin', 'user'), async (req, res) => {
     const conn = await database_1.default.getConnection();
     try {
-        const { docType, date, dueDate, clientId, supplierId, taxRate, discount, discountType, shipping, notes, terms, lines: rawLines, designId } = req.body;
+        const { docType, date, dueDate, clientId, supplierId, matricule, taxRate, discount, discountType, shipping, notes, terms, lines: rawLines, designId } = req.body;
         if (!docType || !rawLines || !Array.isArray(rawLines) || rawLines.length === 0) {
             res.status(400).json({ error: 'Type de document et lignes sont requis' });
             return;
@@ -228,10 +229,10 @@ router.post('/', (0, auth_1.requireRole)('admin', 'user'), async (req, res) => {
         const finalTotal = taxable + taxAmount + (shipping || 0);
         await conn.beginTransaction();
         await conn.execute(`
-      INSERT INTO documents (id, doc_number, doc_type, date, due_date, status, client_id, supplier_id, subtotal, tax_rate, tax_amount, discount_percent, discount_amount, shipping_cost, total, notes, terms_conditions, design_id, created_by)
-      VALUES (?, ?, ?, ?, ?, 'brouillon', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO documents (id, doc_number, doc_type, date, due_date, status, client_id, supplier_id, matricule, subtotal, tax_rate, tax_amount, discount_percent, discount_amount, shipping_cost, total, notes, terms_conditions, design_id, created_by)
+      VALUES (?, ?, ?, ?, ?, 'brouillon', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [id, docNumber, docType, date || new Date().toISOString(), dueDate || null,
-            clientId || null, supplierId || null,
+            clientId || null, supplierId || null, matricule || '',
             computed.subtotal, taxRate || 0, Math.round(taxAmount * 100) / 100, discountPercent, discountAmount,
             shipping || 0, Math.round(finalTotal * 100) / 100, notes || '', terms || '', designId || null, req.user.id
         ]);
@@ -284,7 +285,7 @@ router.put('/:id', (0, auth_1.requireRole)('admin', 'user'), async (req, res) =>
             res.status(400).json({ error: 'Seuls les documents en brouillon peuvent être modifiés' });
             return;
         }
-        const { date, dueDate, clientId, supplierId, taxRate, discount, discountType, shipping, notes, terms, lines: rawLines, designId } = req.body;
+        const { date, dueDate, clientId, supplierId, matricule, taxRate, discount, discountType, shipping, notes, terms, lines: rawLines, designId } = req.body;
         if (rawLines && Array.isArray(rawLines) && rawLines.length > 0) {
             const lines = rawLines.map(mapLineRequest);
             const computed = (0, helpers_1.calculateTotals)(lines);
@@ -339,6 +340,10 @@ router.put('/:id', (0, auth_1.requireRole)('admin', 'user'), async (req, res) =>
             if (supplierId !== undefined) {
                 updates.push('supplier_id = ?');
                 params.push(supplierId);
+            }
+            if (matricule !== undefined) {
+                updates.push('matricule = ?');
+                params.push(matricule);
             }
             if (notes !== undefined) {
                 updates.push('notes = ?');

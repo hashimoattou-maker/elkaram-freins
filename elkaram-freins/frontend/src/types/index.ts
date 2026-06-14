@@ -73,6 +73,7 @@ export interface Document {
   client?: Client;
   supplierId?: string;
   supplier?: Supplier;
+  matricule?: string;
   lines: DocumentLine[];
   subtotal: number;
   taxRate: number;

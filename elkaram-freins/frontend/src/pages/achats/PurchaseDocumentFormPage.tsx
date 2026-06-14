@@ -47,6 +47,7 @@ export default function PurchaseDocumentFormPage() {
 
   const [form, setForm] = useState({
     supplierId: "",
+    matricule: "",
     date: new Date().toISOString().split("T")[0],
     dueDate: "",
     notes: "",
@@ -73,6 +74,7 @@ export default function PurchaseDocumentFormPage() {
       documentsApi.getDocument(convertId).then((doc) => {
         setForm({
           supplierId: doc.supplierId ? String(doc.supplierId) : "",
+          matricule: (doc as any).matricule || "",
           date: new Date().toISOString().split("T")[0],
           dueDate: "",
           notes: doc.notes || "",
@@ -88,6 +90,7 @@ export default function PurchaseDocumentFormPage() {
       documentsApi.getDocument(id).then((doc) => {
         setForm({
           supplierId: doc.supplierId ? String(doc.supplierId) : "",
+          matricule: (doc as any).matricule || "",
           date: doc.date.split("T")[0],
           dueDate: doc.dueDate ? doc.dueDate.split("T")[0] : "",
           notes: doc.notes || "",
@@ -182,6 +185,7 @@ export default function PurchaseDocumentFormPage() {
         date: form.date,
         dueDate: form.dueDate || undefined,
         supplierId: form.supplierId ? String(form.supplierId) : undefined,
+        matricule: form.matricule,
         lines: lines.map((l) => ({
           productId: l.productId,
           ref: l.ref,
@@ -260,17 +264,16 @@ export default function PurchaseDocumentFormPage() {
                 if (!selected) return null;
                 return (
                   <div className="space-y-1">
-                    {(selected.fiscalId || selected.ice) && (
-                      <p className="text-sm text-muted-foreground">
-                        Matricule : {selected.fiscalId || selected.ice}
-                      </p>
-                    )}
                     <p className={`text-sm ${selected.balance > 0 ? "text-red-600" : "text-green-600"}`}>
                       Solde : {formatCurrency(selected.balance)}
                     </p>
                   </div>
                 );
               })()}
+            </div>
+            <div className="space-y-2">
+              <Label>Matricule</Label>
+              <Input value={form.matricule} onChange={(e) => setForm((f) => ({ ...f, matricule: e.target.value }))} placeholder="Matricule" />
             </div>
             <div className="space-y-2">
               <Label>Date</Label>

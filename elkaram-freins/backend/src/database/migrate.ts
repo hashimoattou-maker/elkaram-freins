@@ -257,6 +257,8 @@ export async function migrate(pool: Pool): Promise<void> {
       try { await conn.execute(idx); } catch { /* index may already exist */ }
     }
 
+    try { await conn.execute("ALTER TABLE documents ADD COLUMN matricule VARCHAR(255) DEFAULT '' AFTER supplier_id"); } catch { /* column may already exist */ }
+
     // Seed default admin user
     const [userRows] = await conn.execute('SELECT COUNT(*) as count FROM users') as any;
     if (userRows[0].count === 0) {
