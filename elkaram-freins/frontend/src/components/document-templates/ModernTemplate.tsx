@@ -79,6 +79,7 @@ export default function ModernTemplate({ document, company, design }: ModernTemp
         <p className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ margin: "2px 0", fontSize: "12px" }}>{party?.address}</p>
         <p className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ margin: "2px 0", fontSize: "12px" }}>{party?.phone} | {party?.email}</p>
         {party?.fiscalId && <p className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ margin: "2px 0", fontSize: "12px" }}>N° Fiscal: {party.fiscalId}</p>}
+        {document.matricule && <p className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ margin: "2px 0", fontSize: "12px" }}>Matricule: {document.matricule}</p>}
       </div>
 
       <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0 4px", fontSize: "13px", marginBottom: "25px" }}>

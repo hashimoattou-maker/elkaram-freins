@@ -52,6 +52,7 @@ export default function MinimalTemplate({ document, company, design }: MinimalTe
         <p style={{ margin: 0, fontSize: "14px", fontWeight: "500" }}>{party?.name}</p>
         <p className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ margin: "2px 0", fontSize: "12px", color: "#888" }}>{party?.address}</p>
         <p className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ margin: "2px 0", fontSize: "12px", color: "#888" }}>{party?.phone}</p>
+        {document.matricule && <p className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ margin: "2px 0", fontSize: "12px", color: "#888" }}>Matricule: {document.matricule}</p>}
       </div>
 
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", marginBottom: "30px" }}>
