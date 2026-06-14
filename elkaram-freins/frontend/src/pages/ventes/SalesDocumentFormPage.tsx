@@ -252,9 +252,16 @@ export default function SalesDocumentFormPage() {
                 const selected = clients.find((c) => String(c.id) === form.clientId);
                 if (!selected) return null;
                 return (
-                  <p className={`text-sm mt-1 ${selected.balance > 0 ? "text-red-600" : "text-green-600"}`}>
-                    Solde : {formatCurrency(selected.balance)}
-                  </p>
+                  <div className="space-y-1">
+                    {(selected.fiscalId || selected.ice) && (
+                      <p className="text-sm text-muted-foreground">
+                        Matricule : {selected.fiscalId || selected.ice}
+                      </p>
+                    )}
+                    <p className={`text-sm ${selected.balance > 0 ? "text-red-600" : "text-green-600"}`}>
+                      Solde : {formatCurrency(selected.balance)}
+                    </p>
+                  </div>
                 );
               })()}
             </div>
