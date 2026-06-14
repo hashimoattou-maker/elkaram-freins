@@ -217,22 +217,10 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         )}
       >
         <div className="flex h-16 items-center gap-2 border-b px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary overflow-hidden">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden">
             <svg viewBox="0 0 40 40" className="h-9 w-9" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" style={{stopColor:"#1e40af",stopOpacity:1}} />
-                  <stop offset="100%" style={{stopColor:"#3b82f6",stopOpacity:1}} />
-                </linearGradient>
-              </defs>
-              <rect width="40" height="40" rx="8" fill="url(#grad)"/>
-              <circle cx="20" cy="20" r="11" fill="none" stroke="white" strokeWidth="2.5"/>
-              <circle cx="20" cy="20" r="5" fill="none" stroke="white" strokeWidth="2"/>
-              <circle cx="20" cy="20" r="2" fill="white"/>
-              <rect x="18.5" y="5" width="3" height="6" rx="1.5" fill="white"/>
-              <rect x="18.5" y="29" width="3" height="6" rx="1.5" fill="white"/>
-              <rect x="5" y="18.5" width="6" height="3" rx="1.5" fill="white"/>
-              <rect x="29" y="18.5" width="6" height="3" rx="1.5" fill="white"/>
+              <rect width="40" height="40" rx="8" fill="#0f172a"/>
+              <text x="20" y="27" textAnchor="middle" fontFamily="Arial,sans-serif" fontWeight="800" fontSize="18" fill="white" letterSpacing="-1">EK</text>
             </svg>
           </div>
           <div>
