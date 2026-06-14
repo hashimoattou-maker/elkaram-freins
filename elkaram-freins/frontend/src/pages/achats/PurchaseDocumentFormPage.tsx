@@ -337,11 +337,12 @@ export default function PurchaseDocumentFormPage() {
                     <TableHead className="w-16">Réf</TableHead>
                     <TableHead>Article</TableHead>
                     <TableHead className="w-16">Qté</TableHead>
-                    <TableHead className="w-24">Prix HT</TableHead>
                     <TableHead className="w-24">Prix Unit.</TableHead>
-                    <TableHead className="w-24">Total TTC</TableHead>
+                    <TableHead className="w-24">Remise</TableHead>
+                    <TableHead className="w-24">Total HT</TableHead>
                     <TableHead className="w-16">TVA %</TableHead>
                     <TableHead className="w-24">Mt TVA</TableHead>
+                    <TableHead className="w-24">Total TTC</TableHead>
                     <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -362,13 +363,16 @@ export default function PurchaseDocumentFormPage() {
                         <TableCell>
                           <Input type="number" value={line.quantity} onChange={(e) => updateLine(index, "quantity", Number(e.target.value))} className="w-16" />
                         </TableCell>
-                        <TableCell className="font-medium text-xs">{formatCurrency(ht)}</TableCell>
                         <TableCell>
                           <Input type="number" step="0.01" value={line.unitPrice} onChange={(e) => updateLine(index, "unitPrice", Number(e.target.value))} className="w-24" />
                         </TableCell>
-                        <TableCell className="font-medium text-xs">{formatCurrency(ttc)}</TableCell>
+                        <TableCell>
+                          <Input type="number" step="0.01" value={line.discount || 0} onChange={(e) => updateLine(index, "discount", Number(e.target.value))} className="w-24" />
+                        </TableCell>
+                        <TableCell className="font-medium text-xs">{formatCurrency(ht)}</TableCell>
                         <TableCell className="text-xs">{tva}%</TableCell>
                         <TableCell className="font-medium text-xs">{formatCurrency(mtTva)}</TableCell>
+                        <TableCell className="font-medium text-xs">{formatCurrency(ttc)}</TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" className="text-red-600 h-8 w-8" onClick={() => removeLine(index)}>
                             <Trash2 className="h-4 w-4" />
