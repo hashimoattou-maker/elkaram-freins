@@ -49,11 +49,16 @@ function mapProduct(p) {
         return p;
     return {
         ...p,
+        purchasePrice: Number(p.purchase_price || 0),
+        sellingPrice: Number(p.selling_price || 0),
+        wholesalePrice: Number(p.wholesale_price || 0),
         purchase_price: Number(p.purchase_price || 0),
         selling_price: Number(p.selling_price || 0),
         wholesale_price: Number(p.wholesale_price || 0),
         stock: Number(p.stock || 0),
         min_stock: Number(p.min_stock || 0),
+        categoryId: p.category_id,
+        categoryName: p.category_name,
     };
 }
 router.get('/', async (req, res) => {
