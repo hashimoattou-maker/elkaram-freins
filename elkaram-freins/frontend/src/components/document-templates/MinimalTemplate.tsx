@@ -9,7 +9,7 @@ interface MinimalTemplateProps {
 }
 
 export default function MinimalTemplate({ document, company, design }: MinimalTemplateProps) {
-  const isSales = ["devis", "commande_client", "bl", "facture_vente", "avoir_vente"].includes(document.docType);
+  const isSales = ["devis", "commande_client", "bon_livraison", "facture_vente", "avoir_vente"].includes(document.docType);
   const party = isSales ? document.client : document.supplier;
 
   return (

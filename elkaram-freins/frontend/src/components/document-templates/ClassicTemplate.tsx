@@ -10,7 +10,7 @@ interface ClassicTemplateProps {
 }
 
 export default function ClassicTemplate({ document, company, design }: ClassicTemplateProps) {
-  const isSales = ["devis", "commande_client", "bl", "facture_vente", "avoir_vente"].includes(document.docType);
+  const isSales = ["devis", "commande_client", "bon_livraison", "facture_vente", "avoir_vente"].includes(document.docType);
   const party = isSales ? document.client : document.supplier;
 
   return (
