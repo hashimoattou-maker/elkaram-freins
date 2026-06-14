@@ -53,17 +53,23 @@ router.get('/stats', async (req, res) => {
       ORDER BY stock ASC LIMIT 10
     `);
         res.json({
-            totalProducts: productsRows[0].count,
-            totalClients: clientsRows[0].count,
-            totalSuppliers: suppliersRows[0].count,
-            lowStockCount: lowStockRows[0].count,
-            totalRevenue: parseFloat(revenueRows[0].total),
-            totalPurchases: parseFloat(purchaseRows[0].total),
-            pendingInvoices: pendingRows[0].count,
+            totalProducts: Number(productsRows[0].count),
+            totalClients: Number(clientsRows[0].count),
+            totalSuppliers: Number(suppliersRows[0].count),
+            lowStockCount: Number(lowStockRows[0].count),
+            totalRevenue: Number(revenueRows[0].total),
+            totalPurchases: Number(purchaseRows[0].total),
+            pendingInvoices: Number(pendingRows[0].count),
             monthlyRevenue: revenueData,
-            recentDocuments,
-            topProducts,
-            lowStockProducts,
+            recentDocuments: recentDocuments.map((d) => ({ ...d, total: Number(d.total) })),
+            topProducts: topProducts.map((p) => ({ ...p, totalSold: Number(p.totalSold), totalRevenue: Number(p.totalRevenue) })),
+            lowStockProducts: lowStockProducts.map((p) => ({
+                ...p,
+                selling_price: Number(p.selling_price || 0),
+                purchase_price: Number(p.purchase_price || 0),
+                stock: Number(p.stock || 0),
+                minStock: Number(p.minStock || 0),
+            })),
         });
     }
     catch (err) {

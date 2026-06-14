@@ -81,7 +81,13 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
       FROM documents WHERE client_id = ? AND status = 'confirmé'
     `, [req.params.id]) as any;
 
-    res.json({ ...clientRows[0], documents, total_due: totalDueRows[0].total_due || 0 });
+    res.json({
+      ...clientRows[0],
+      credit_limit: Number(clientRows[0].credit_limit || 0),
+      balance: Number(clientRows[0].balance || 0),
+      documents: documents.map((d: any) => ({ ...d, total: Number(d.total || 0) })),
+      total_due: Number(totalDueRows[0].total_due || 0)
+    });
   } catch (err) {
     res.status(500).json({ error: 'Erreur lors de la récupération du client' });
   }

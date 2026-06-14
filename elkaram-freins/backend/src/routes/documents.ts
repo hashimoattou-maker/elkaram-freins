@@ -50,8 +50,8 @@ async function updateStockForDocument(doc: any, lines: any[], movementType: stri
 
 function mapDoc(d: any): any {
   if (!d) return d;
-  const discount = d.discount_percent && d.discount_percent > 0 ? d.discount_percent : (d.discount_amount || 0);
-  const discountType = d.discount_percent && d.discount_percent > 0 ? 'percentage' : 'fixed';
+  const discount = d.discount_percent && Number(d.discount_percent) > 0 ? Number(d.discount_percent) : Number(d.discount_amount || 0);
+  const discountType = d.discount_percent && Number(d.discount_percent) > 0 ? 'percentage' : 'fixed';
   return {
     id: d.id,
     docNumber: d.doc_number,
@@ -65,14 +65,14 @@ function mapDoc(d: any): any {
     supplierId: d.supplier_id,
     supplierName: d.supplier_name,
     supplier: d.supplier_name ? { id: d.supplier_id, name: d.supplier_name, code: d.supplier_code } : undefined,
-    subtotal: d.subtotal,
-    taxRate: d.tax_rate,
-    taxAmount: d.tax_amount,
+    subtotal: Number(d.subtotal || 0),
+    taxRate: Number(d.tax_rate || 0),
+    taxAmount: Number(d.tax_amount || 0),
     discount,
     discountType,
-    shipping: d.shipping_cost,
-    total: d.total,
-    paidAmount: d.paid_amount,
+    shipping: Number(d.shipping_cost || 0),
+    total: Number(d.total || 0),
+    paidAmount: Number(d.paid_amount || 0),
     notes: d.notes,
     terms: d.terms_conditions,
     convertedFromId: d.converted_from_id,
@@ -88,8 +88,12 @@ function mapDoc(d: any): any {
 
 function mapLine(l: any): any {
   if (!l) return l;
-  const totalHt = l.total_ht ?? (l.quantity * l.unit_price);
-  const totalTtc = l.total_ttc ?? (totalHt * (1 + (l.tax_rate || 0) / 100));
+  const qty = Number(l.quantity || 0);
+  const price = Number(l.unit_price || 0);
+  const tax = Number(l.tax_rate || 0);
+  const disc = Number(l.discount_percent || 0);
+  const totalHt = Number(l.total_ht) || (qty * price - disc);
+  const totalTtc = Number(l.total_ttc) || (totalHt * (1 + tax / 100));
   return {
     id: l.id,
     documentId: l.document_id,
@@ -98,12 +102,12 @@ function mapLine(l: any): any {
     productName: l.product_name,
     lineNumber: l.line_number,
     description: l.description,
-    quantity: l.quantity,
+    quantity: qty,
     unit: l.unit,
-    unitPrice: l.unit_price,
-    taxRate: l.tax_rate,
-    discountPercent: l.discount_percent,
-    discount: l.discount_amount || 0,
+    unitPrice: price,
+    taxRate: tax,
+    discountPercent: disc,
+    discount: Number(l.discount_amount || 0),
     totalHt,
     totalTtc,
     total: totalHt,
@@ -437,11 +441,11 @@ router.post('/:id/validate', requireRole('admin', 'user'), async (req: AuthReque
 
     if (doc.client_id) {
       const [balRows] = await conn.execute("SELECT COALESCE(SUM(total - COALESCE(paid_amount, 0)), 0) as bal FROM documents WHERE client_id = ? AND status = 'confirmé'", [doc.client_id]) as any;
-      await conn.execute("UPDATE clients SET balance = ?, updated_at = NOW() WHERE id = ?", [balRows[0].bal || 0, doc.client_id]);
+      await conn.execute("UPDATE clients SET balance = ?, updated_at = NOW() WHERE id = ?", [Number(balRows[0].bal || 0), doc.client_id]);
     }
     if (doc.supplier_id) {
       const [balRows] = await conn.execute("SELECT COALESCE(SUM(total - COALESCE(paid_amount, 0)), 0) as bal FROM documents WHERE supplier_id = ? AND status = 'confirmé'", [doc.supplier_id]) as any;
-      await conn.execute("UPDATE suppliers SET balance = ?, updated_at = NOW() WHERE id = ?", [balRows[0].bal || 0, doc.supplier_id]);
+      await conn.execute("UPDATE suppliers SET balance = ?, updated_at = NOW() WHERE id = ?", [Number(balRows[0].bal || 0), doc.supplier_id]);
     }
 
     await conn.commit();
@@ -556,7 +560,12 @@ router.get('/:id/pdf', async (req: AuthRequest, res: Response) => {
       design = designRows[0] || null;
     }
 
-    res.json({ document: doc, lines, company: companyRows[0], design });
+    res.json({
+      document: mapDoc(doc),
+      lines: lines.map(mapLine),
+      company: companyRows[0],
+      design
+    });
   } catch (err) {
     res.status(500).json({ error: 'Erreur lors de la génération du PDF' });
   }
@@ -583,8 +592,8 @@ router.post('/:id/payment', requireRole('admin', 'user'), async (req: AuthReques
       return;
     }
 
-    const newPaid = (doc.paid_amount || 0) + amount;
-    if (newPaid > doc.total) {
+    const newPaid = Number(doc.paid_amount || 0) + Number(amount);
+    if (newPaid > Number(doc.total)) {
       res.status(400).json({ error: 'Le montant payé dépasse le total du document' });
       return;
     }
@@ -593,13 +602,13 @@ router.post('/:id/payment', requireRole('admin', 'user'), async (req: AuthReques
 
     if (doc.client_id) {
       const [balRows] = await pool.execute("SELECT COALESCE(SUM(total - COALESCE(paid_amount, 0)), 0) as bal FROM documents WHERE client_id = ? AND status = 'confirmé'", [doc.client_id]) as any;
-      await pool.execute("UPDATE clients SET balance = ?, updated_at = NOW() WHERE id = ?", [balRows[0].bal || 0, doc.client_id]);
+      await pool.execute("UPDATE clients SET balance = ?, updated_at = NOW() WHERE id = ?", [Number(balRows[0].bal || 0), doc.client_id]);
     }
 
     await pool.execute('INSERT INTO audit_log (user_id, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?)',
       [req.user!.id, 'payment', 'document', id, `Paiement de ${amount} DA sur ${doc.doc_number}`]);
 
-    res.json({ message: 'Paiement enregistré', paid_amount: newPaid, remaining: doc.total - newPaid });
+    res.json({ message: 'Paiement enregistré', paid_amount: newPaid, remaining: Number(doc.total) - newPaid });
   } catch (err) {
     res.status(500).json({ error: 'Erreur lors de l\'enregistrement du paiement' });
   }

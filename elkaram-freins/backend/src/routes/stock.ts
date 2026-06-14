@@ -82,11 +82,17 @@ router.post('/adjust', requireRole('admin', 'user'), async (req: AuthRequest, re
     await conn.commit();
 
     const [updatedRows] = await pool.execute('SELECT * FROM products WHERE id = ?', [product_id]) as any;
+    const updatedProduct = updatedRows[0];
+    if (updatedProduct) {
+      updatedProduct.purchase_price = Number(updatedProduct.purchase_price || 0);
+      updatedProduct.selling_price = Number(updatedProduct.selling_price || 0);
+      updatedProduct.wholesale_price = Number(updatedProduct.wholesale_price || 0);
+    }
 
     await pool.execute('INSERT INTO audit_log (user_id, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?)',
       [req.user!.id, 'stock_adjust', 'product', product_id, `Ajustement de stock: ${qty > 0 ? '+' : ''}${qty}`]);
 
-    res.json({ message: 'Stock ajusté avec succès', product: updatedRows[0], movement_id: id });
+    res.json({ message: 'Stock ajusté avec succès', product: updatedProduct, movement_id: id });
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ error: 'Erreur lors de l\'ajustement du stock' });
@@ -106,12 +112,18 @@ router.get('/low-stock', async (req: AuthRequest, res: Response) => {
     `) as any;
 
     const lowStockCount = products.length;
-    const criticalCount = products.filter((p: any) => p.stock === 0).length;
+    const criticalCount = products.filter((p: any) => Number(p.stock) === 0).length;
 
     res.json({
       count: lowStockCount,
       critical_count: criticalCount,
-      products,
+      products: products.map((p: any) => ({
+        ...p,
+        purchase_price: Number(p.purchase_price || 0),
+        selling_price: Number(p.selling_price || 0),
+        stock: Number(p.stock || 0),
+        min_stock: Number(p.min_stock || 0),
+      })),
     });
   } catch (err) {
     res.status(500).json({ error: 'Erreur lors de la récupération des produits en stock faible' });
@@ -134,7 +146,7 @@ router.get('/report', async (req: AuthRequest, res: Response) => {
     const totalProducts = products.length;
     const totalStockValue = products.reduce((sum: number, p: any) => sum + (parseFloat(p.stock_value) || 0), 0);
     const totalSellingValue = products.reduce((sum: number, p: any) => sum + (parseFloat(p.selling_value) || 0), 0);
-    const totalStock = products.reduce((sum: number, p: any) => sum + p.stock, 0);
+    const totalStock = products.reduce((sum: number, p: any) => sum + Number(p.stock || 0), 0);
 
     res.json({
       summary: {
@@ -144,7 +156,15 @@ router.get('/report', async (req: AuthRequest, res: Response) => {
         totalSellingValue: Math.round(totalSellingValue * 100) / 100,
         potentialMargin: Math.round((totalSellingValue - totalStockValue) * 100) / 100,
       },
-      products,
+      products: products.map((p: any) => ({
+        ...p,
+        stock: Number(p.stock || 0),
+        min_stock: Number(p.min_stock || 0),
+        purchase_price: Number(p.purchase_price || 0),
+        selling_price: Number(p.selling_price || 0),
+        stock_value: Number(p.stock_value || 0),
+        selling_value: Number(p.selling_value || 0),
+      })),
     });
   } catch (err) {
     res.status(500).json({ error: 'Erreur lors de la génération du rapport de stock' });

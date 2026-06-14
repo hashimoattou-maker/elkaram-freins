@@ -44,6 +44,18 @@ const upload_1 = require("../middleware/upload");
 const XLSX = __importStar(require("xlsx"));
 const router = (0, express_1.Router)();
 router.use(auth_1.authenticate);
+function mapProduct(p) {
+    if (!p)
+        return p;
+    return {
+        ...p,
+        purchase_price: Number(p.purchase_price || 0),
+        selling_price: Number(p.selling_price || 0),
+        wholesale_price: Number(p.wholesale_price || 0),
+        stock: Number(p.stock || 0),
+        min_stock: Number(p.min_stock || 0),
+    };
+}
 router.get('/', async (req, res) => {
     try {
         const { search, category_id, active, page = '1', limit = '50' } = req.query;
@@ -78,7 +90,7 @@ router.get('/', async (req, res) => {
       LIMIT ${limitNum} OFFSET ${offset}
     `, params);
         res.json({
-            data: products,
+            data: products.map(mapProduct),
             total: countRows[0].count,
             page: pageNum,
             limit: limitNum,
@@ -100,7 +112,7 @@ router.get('/barcode/:barcode', async (req, res) => {
             res.status(404).json({ error: 'Produit non trouvé' });
             return;
         }
-        res.json(rows[0]);
+        res.json(mapProduct(rows[0]));
     }
     catch (err) {
         res.status(500).json({ error: 'Erreur lors de la recherche du produit' });
@@ -137,7 +149,7 @@ router.get('/:id', async (req, res) => {
             res.status(404).json({ error: 'Produit non trouvé' });
             return;
         }
-        res.json(rows[0]);
+        res.json(mapProduct(rows[0]));
     }
     catch (err) {
         res.status(500).json({ error: 'Erreur lors de la récupération du produit' });
@@ -164,7 +176,7 @@ router.post('/', (0, auth_1.requireRole)('admin', 'user'), async (req, res) => {
       FROM products p LEFT JOIN categories c ON c.id = p.category_id
       WHERE p.id = ?
     `, [id]);
-        res.status(201).json(productRows[0]);
+        res.status(201).json(mapProduct(productRows[0]));
     }
     catch (err) {
         res.status(500).json({ error: 'Erreur lors de la création du produit' });
@@ -248,7 +260,7 @@ router.put('/:id', (0, auth_1.requireRole)('admin', 'user'), async (req, res) =>
       FROM products p LEFT JOIN categories c ON c.id = p.category_id
       WHERE p.id = ?
     `, [id]);
-        res.json(productRows[0]);
+        res.json(mapProduct(productRows[0]));
     }
     catch (err) {
         res.status(500).json({ error: 'Erreur lors de la mise à jour du produit' });

@@ -81,7 +81,12 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
       FROM documents WHERE supplier_id = ? AND status = 'confirmé'
     `, [req.params.id]) as any;
 
-    res.json({ ...supplierRows[0], documents, total_due: totalDueRows[0].total_due || 0 });
+    res.json({
+      ...supplierRows[0],
+      balance: Number(supplierRows[0].balance || 0),
+      documents: documents.map((d: any) => ({ ...d, total: Number(d.total || 0) })),
+      total_due: Number(totalDueRows[0].total_due || 0)
+    });
   } catch (err) {
     res.status(500).json({ error: 'Erreur lors de la récupération du fournisseur' });
   }
