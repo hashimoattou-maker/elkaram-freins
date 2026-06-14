@@ -220,7 +220,15 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden">
             <svg viewBox="0 0 40 40" className="h-9 w-9" xmlns="http://www.w3.org/2000/svg">
               <rect width="40" height="40" rx="8" fill="#0f172a"/>
-              <text x="20" y="27" textAnchor="middle" fontFamily="Arial,sans-serif" fontWeight="800" fontSize="18" fill="white" letterSpacing="-1">EK</text>
+              <g transform="translate(20,20)">
+                {[0,45,90,135,180,225,270,315].map((angle) => (
+                  <rect key={angle} x="-2.2" y="-15" width="4.4" height="6" rx="1" fill="#3b82f6" transform={`rotate(${angle})`}/>
+                ))}
+                <circle r="10.5" fill="#0f172a"/>
+                <circle r="9" fill="none" stroke="#3b82f6" strokeWidth="2"/>
+                <circle r="5" fill="none" stroke="#3b82f6" strokeWidth="1.5"/>
+                <circle r="2" fill="#3b82f6"/>
+              </g>
             </svg>
           </div>
           <div>
