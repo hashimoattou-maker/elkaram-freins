@@ -7,6 +7,7 @@ const express_1 = require("express");
 const database_1 = __importDefault(require("../database"));
 const auth_1 = require("../middleware/auth");
 const upload_1 = require("../middleware/upload");
+const fs_1 = __importDefault(require("fs"));
 const router = (0, express_1.Router)();
 router.use(auth_1.authenticate);
 router.get('/company', async (req, res) => {
@@ -94,9 +95,11 @@ router.post('/logo', (0, auth_1.requireRole)('admin'), upload_1.upload.single('l
             res.status(400).json({ error: 'Fichier logo requis' });
             return;
         }
-        const logoPath = `/uploads/${req.file.filename}`;
-        await database_1.default.execute("UPDATE company_settings SET logo_path = ?, updated_at = NOW() WHERE id = 1", [logoPath]);
-        res.json({ logo_path: logoPath });
+        const fileBuffer = fs_1.default.readFileSync(req.file.path);
+        const base64 = `data:${req.file.mimetype};base64,${fileBuffer.toString('base64')}`;
+        await database_1.default.execute("UPDATE company_settings SET logo_base64 = ?, logo_path = ?, updated_at = NOW() WHERE id = 1", [base64, `/uploads/${req.file.filename}`]);
+        fs_1.default.unlinkSync(req.file.path);
+        res.json({ logo_path: `/uploads/${req.file.filename}`, logo_base64: base64 });
     }
     catch (err) {
         res.status(500).json({ error: 'Erreur lors du téléchargement du logo' });

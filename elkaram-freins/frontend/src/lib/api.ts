@@ -174,7 +174,7 @@ export const settings = {
         website: d.website,
         fiscalId: d.fiscal_id,
         ice: d.ice,
-        logo: d.logo_path,
+        logo: d.logo_base64 || d.logo_path,
         logoWidth: d.logo_width || 200,
         logoHeight: d.logo_height || 100,
         currency: d.currency,
