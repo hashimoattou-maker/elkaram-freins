@@ -172,7 +172,16 @@ export default function DashboardPage() {
                 <div
                   key={doc.id}
                   className="flex items-center justify-between rounded-lg border p-3 cursor-pointer hover:bg-muted/50"
-                  onClick={() => navigate(`/${doc.docType.includes("achat") ? "achats" : "ventes"}/${doc.docType.replace("_", "/")}/${doc.id}`)}
+                  onClick={() => {
+                    const typeMap: Record<string, string> = {
+                      devis: "devis", commande_client: "commandes", bon_livraison: "bl",
+                      facture_vente: "factures", avoir_vente: "avoirs",
+                      bon_commande: "bc", bon_achat: "ba", facture_achat: "factures", avoir_achat: "avoirs",
+                    };
+                    const section = doc.docType.includes("achat") ? "achats" : "ventes";
+                    const slug = typeMap[doc.docType] || doc.docType;
+                    navigate(`/${section}/${slug}/${doc.id}`);
+                  }}
                 >
                   <div>
                     <p className="text-sm font-medium">{doc.docNumber}</p>
