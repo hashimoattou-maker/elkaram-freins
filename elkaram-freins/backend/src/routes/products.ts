@@ -271,45 +271,35 @@ router.post('/import-excel', requireRole('admin', 'user'), upload.single('file')
       return;
     }
 
-    const refs = validRows.map((r: any) => String(r.reference));
-    const ph = refs.map(() => '?').join(',');
-    const [existing] = await conn.query(
-      `SELECT reference FROM products WHERE reference IN (${ph})`,
-      refs
-    ) as any[];
-    const existingRefs = new Set(existing.map((r: any) => r.reference));
+    const [existingRows] = await conn.query('SELECT reference FROM products') as any[];
+    const existingRefs = new Set(existingRows.map((r: any) => String(r.reference)));
 
     const catCache: Record<string, string> = {};
-    const [allCats] = await conn.execute('SELECT id, name FROM categories') as any[];
+    const [allCats] = await conn.query('SELECT id, name FROM categories') as any[];
     for (const c of allCats) { catCache[c.name] = c.id; }
 
-    const toInsert = validRows.filter((r: any) => !existingRefs.has(r.reference));
+    const toInsert = validRows.filter((r: any) => !existingRefs.has(String(r.reference)));
 
     await conn.beginTransaction();
-    const BATCH = 100;
-    for (let i = 0; i < toInsert.length; i += BATCH) {
-      const batch = toInsert.slice(i, i + BATCH);
-      const rows: any[][] = batch.map((row: any) => {
+    let imported = 0;
+    for (const row of toInsert) {
+      try {
         let categoryId: string | null = null;
         if (row.category_name && catCache[row.category_name]) {
           categoryId = catCache[row.category_name];
         }
-        return [
-          generateId(), row.reference, row.name, row.description || '', categoryId,
-          row.barcode || generateBarcode(), row.purchase_price || 0, row.selling_price || 0,
-          row.wholesale_price || 0, row.stock || 0, row.min_stock || 5, row.unit || 'piece'
-        ];
-      });
-      const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
-      const flat = rows.flat();
-      await conn.query(
-        `INSERT INTO products (id, reference, name, description, category_id, barcode, purchase_price, selling_price, wholesale_price, stock, min_stock, unit) VALUES ${placeholders}`,
-        flat
-      );
+        await conn.query(
+          `INSERT INTO products (id, reference, name, description, category_id, barcode, purchase_price, selling_price, wholesale_price, stock, min_stock, unit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [generateId(), row.reference, row.name, row.description || '', categoryId,
+           row.barcode || generateBarcode(), row.purchase_price || 0, row.selling_price || 0,
+           row.wholesale_price || 0, row.stock || 0, row.min_stock || 5, row.unit || 'piece']
+        );
+        imported++;
+      } catch { /* skip */ }
     }
     await conn.commit();
 
-    res.json({ imported: toInsert.length, errors: errors + existingRefs.size, total: data.length });
+    res.json({ imported, errors: errors + (toInsert.length - imported), total: data.length });
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ error: 'Erreur lors de l\'importation' });

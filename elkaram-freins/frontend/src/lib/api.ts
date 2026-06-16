@@ -85,7 +85,7 @@ export const clients = {
   importExcel: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return api.post<ImportResult>("/clients/import", fd, { timeout: 120000 }).then((r) => r.data);
+    return api.post<ImportResult>("/clients/import-excel", fd, { timeout: 120000 }).then((r) => r.data);
   },
   exportExcel: () => api.get("/clients/export", { responseType: "blob" }).then((r) => r.data),
 };

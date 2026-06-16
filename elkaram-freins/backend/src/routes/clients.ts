@@ -209,36 +209,28 @@ router.post('/import-excel', requireRole('admin', 'user'), upload.single('file')
       return;
     }
 
-    const codes = validRows.map((r: any) => String(r.code));
-    const placeholders = codes.map(() => '?').join(',');
-    const [existing] = await conn.query(
-      `SELECT code FROM clients WHERE code IN (${placeholders})`,
-      codes
-    ) as any[];
-    const existingCodes = new Set(existing.map((r: any) => r.code));
+    const [existingRows] = await conn.query('SELECT code FROM clients') as any[];
+    const existingCodes = new Set(existingRows.map((r: any) => String(r.code)));
 
     const toInsert = validRows.filter((r: any) => !existingCodes.has(String(r.code)));
 
     await conn.beginTransaction();
-    const BATCH = 100;
-    for (let i = 0; i < toInsert.length; i += BATCH) {
-      const batch = toInsert.slice(i, i + BATCH);
-      const rows: any[][] = batch.map((row: any) => [
-        generateId(), String(row.code), row.name || row.company || '', row.company || '',
-        row.address || '', row.phone || '', row.email || '', row.fiscal_id || '',
-        row.ice || '', row.commercial_id || '', row.article_id || '',
-        row.credit_limit || 0, row.notes || ''
-      ]);
-      const ph = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
-      const flat = rows.flat();
-      await conn.query(
-        `INSERT INTO clients (id, code, name, company, address, phone, email, fiscal_id, ice, commercial_id, article_id, credit_limit, notes) VALUES ${ph}`,
-        flat
-      );
+    let imported = 0;
+    for (const row of toInsert) {
+      try {
+        await conn.query(
+          `INSERT INTO clients (id, code, name, company, address, phone, email, fiscal_id, ice, commercial_id, article_id, credit_limit, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [generateId(), String(row.code), row.name || row.company || '', row.company || '',
+           row.address || '', row.phone || '', row.email || '', row.fiscal_id || '',
+           row.ice || '', row.commercial_id || '', row.article_id || '',
+           row.credit_limit || 0, row.notes || '']
+        );
+        imported++;
+      } catch { /* skip duplicate or invalid */ }
     }
     await conn.commit();
 
-    res.json({ imported: toInsert.length, errors: errors + existingCodes.size, total: data.length });
+    res.json({ imported, errors: errors + (toInsert.length - imported), total: data.length });
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ error: 'Erreur lors de l\'importation des clients' });

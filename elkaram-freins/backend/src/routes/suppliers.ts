@@ -205,35 +205,27 @@ router.post('/import-excel', requireRole('admin', 'user'), upload.single('file')
       return;
     }
 
-    const codes = validRows.map((r: any) => String(r.code));
-    const ph = codes.map(() => '?').join(',');
-    const [existing] = await conn.query(
-      `SELECT code FROM suppliers WHERE code IN (${ph})`,
-      codes
-    ) as any[];
-    const existingCodes = new Set(existing.map((r: any) => r.code));
+    const [existingRows] = await conn.query('SELECT code FROM suppliers') as any[];
+    const existingCodes = new Set(existingRows.map((r: any) => String(r.code)));
 
     const toInsert = validRows.filter((r: any) => !existingCodes.has(String(r.code)));
 
     await conn.beginTransaction();
-    const BATCH = 100;
-    for (let i = 0; i < toInsert.length; i += BATCH) {
-      const batch = toInsert.slice(i, i + BATCH);
-      const rows: any[][] = batch.map((row: any) => [
-        generateId(), String(row.code), row.name || row.company || '', row.company || '',
-        row.address || '', row.phone || '', row.email || '', row.fiscal_id || '',
-        row.ice || '', row.notes || ''
-      ]);
-      const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
-      const flat = rows.flat();
-      await conn.query(
-        `INSERT INTO suppliers (id, code, name, company, address, phone, email, fiscal_id, ice, notes) VALUES ${placeholders}`,
-        flat
-      );
+    let imported = 0;
+    for (const row of toInsert) {
+      try {
+        await conn.query(
+          `INSERT INTO suppliers (id, code, name, company, address, phone, email, fiscal_id, ice, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [generateId(), String(row.code), row.name || row.company || '', row.company || '',
+           row.address || '', row.phone || '', row.email || '', row.fiscal_id || '',
+           row.ice || '', row.notes || '']
+        );
+        imported++;
+      } catch { /* skip */ }
     }
     await conn.commit();
 
-    res.json({ imported: toInsert.length, errors: errors + existingCodes.size, total: data.length });
+    res.json({ imported, errors: errors + (toInsert.length - imported), total: data.length });
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ error: 'Erreur lors de l\'importation' });

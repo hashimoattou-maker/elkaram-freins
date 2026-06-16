@@ -263,27 +263,23 @@ router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.
             res.json({ imported: 0, errors, total: data.length });
             return;
         }
-        const codes = validRows.map((r) => String(r.code));
-        const placeholders = codes.map(() => '?').join(',');
-        const [existing] = await conn.query(`SELECT code FROM clients WHERE code IN (${placeholders})`, codes);
-        const existingCodes = new Set(existing.map((r) => r.code));
+        const [existingRows] = await conn.query('SELECT code FROM clients');
+        const existingCodes = new Set(existingRows.map((r) => String(r.code)));
         const toInsert = validRows.filter((r) => !existingCodes.has(String(r.code)));
         await conn.beginTransaction();
-        const BATCH = 100;
-        for (let i = 0; i < toInsert.length; i += BATCH) {
-            const batch = toInsert.slice(i, i + BATCH);
-            const rows = batch.map((row) => [
-                (0, helpers_1.generateId)(), String(row.code), row.name || row.company || '', row.company || '',
-                row.address || '', row.phone || '', row.email || '', row.fiscal_id || '',
-                row.ice || '', row.commercial_id || '', row.article_id || '',
-                row.credit_limit || 0, row.notes || ''
-            ]);
-            const ph = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
-            const flat = rows.flat();
-            await conn.query(`INSERT INTO clients (id, code, name, company, address, phone, email, fiscal_id, ice, commercial_id, article_id, credit_limit, notes) VALUES ${ph}`, flat);
+        let imported = 0;
+        for (const row of toInsert) {
+            try {
+                await conn.query(`INSERT INTO clients (id, code, name, company, address, phone, email, fiscal_id, ice, commercial_id, article_id, credit_limit, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [(0, helpers_1.generateId)(), String(row.code), row.name || row.company || '', row.company || '',
+                    row.address || '', row.phone || '', row.email || '', row.fiscal_id || '',
+                    row.ice || '', row.commercial_id || '', row.article_id || '',
+                    row.credit_limit || 0, row.notes || '']);
+                imported++;
+            }
+            catch { /* skip duplicate or invalid */ }
         }
         await conn.commit();
-        res.json({ imported: toInsert.length, errors: errors + existingCodes.size, total: data.length });
+        res.json({ imported, errors: errors + (toInsert.length - imported), total: data.length });
     }
     catch (err) {
         await conn.rollback();
