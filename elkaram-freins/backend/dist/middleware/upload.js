@@ -5,17 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.upload = void 0;
 const multer_1 = __importDefault(require("multer"));
-const path_1 = __importDefault(require("path"));
-const uuid_1 = require("uuid");
-const storage = multer_1.default.diskStorage({
-    destination: (_req, _file, cb) => {
-        cb(null, path_1.default.resolve(__dirname, '../../uploads'));
-    },
-    filename: (_req, file, cb) => {
-        const ext = path_1.default.extname(file.originalname);
-        cb(null, `${(0, uuid_1.v4)()}${ext}`);
-    },
-});
+const storage = multer_1.default.memoryStorage();
 const allowedMimes = [
     'image/jpeg',
     'image/png',

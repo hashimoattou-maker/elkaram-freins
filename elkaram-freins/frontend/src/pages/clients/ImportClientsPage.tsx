@@ -13,6 +13,7 @@ interface ImportRow {
   phone?: string;
   email?: string;
   address?: string;
+  _rawKeys?: string;
 }
 
 export default function ImportClientsPage() {
@@ -42,6 +43,7 @@ export default function ImportClientsPage() {
           name: row.name || row.Name || row.Nom || row.nom || "",
           company: row.company || row.Company || row.Société || row.societe || row["Societe"] || "",
           phone: row.phone || row.Phone || row.Téléphone || row.telephone || row.Tel || "",
+          _rawKeys: Object.keys(row).join(", "),
         }));
         setPreview(mapped.slice(0, 10));
       } catch {
@@ -58,8 +60,9 @@ export default function ImportClientsPage() {
     try {
       const res = await clientsApi.importExcel(file);
       setResult(res);
-    } catch {
-      setError("Erreur lors de l'importation");
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || "Erreur lors de l'importation";
+      setError(msg);
     } finally {
       setImporting(false);
     }
@@ -111,6 +114,9 @@ export default function ImportClientsPage() {
 
           {preview.length > 0 && (
             <>
+              <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                Colonnes détectées: {preview[0]._rawKeys}
+              </div>
               <div>
                 <h3 className="text-sm font-medium mb-2">Aperçu ({preview.length} premières lignes)</h3>
                 <div className="rounded-md border overflow-x-auto">

@@ -62,11 +62,9 @@ router.post('/logo', requireRole('admin'), upload.single('logo'), async (req: Au
       res.status(400).json({ error: 'Fichier logo requis' });
       return;
     }
-    const fileBuffer = fs.readFileSync(req.file.path);
-    const base64 = `data:${req.file.mimetype};base64,${fileBuffer.toString('base64')}`;
-    await pool.execute("UPDATE company_settings SET logo_base64 = ?, logo_path = ?, updated_at = NOW() WHERE id = 1", [base64, `/uploads/${req.file.filename}`]);
-    fs.unlinkSync(req.file.path);
-    res.json({ logo_path: `/uploads/${req.file.filename}`, logo_base64: base64 });
+    const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    await pool.execute("UPDATE company_settings SET logo_base64 = ?, updated_at = NOW() WHERE id = 1", [base64]);
+    res.json({ logo_base64: base64 });
   } catch (err) {
     res.status(500).json({ error: 'Erreur lors du téléchargement du logo' });
   }

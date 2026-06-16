@@ -309,7 +309,7 @@ router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.
             res.status(400).json({ error: 'Fichier requis' });
             return;
         }
-        const wb = XLSX.readFile(req.file.path);
+        const wb = XLSX.read(req.file.buffer);
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws);
         const validRows = data.filter((row) => row.reference && row.name);

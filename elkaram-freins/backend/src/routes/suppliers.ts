@@ -193,7 +193,7 @@ router.post('/import-excel', requireRole('admin', 'user'), upload.single('file')
       return;
     }
 
-    const wb = XLSX.readFile(req.file.path);
+    const wb = XLSX.read(req.file.buffer);
     const ws = wb.Sheets[wb.SheetNames[0]];
     const data = XLSX.utils.sheet_to_json(ws) as any[];
 
