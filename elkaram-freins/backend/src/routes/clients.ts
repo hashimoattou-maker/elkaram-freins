@@ -201,7 +201,7 @@ router.post('/import-excel', requireRole('admin', 'user'), upload.single('file')
     const ws = wb.Sheets[wb.SheetNames[0]];
     const data = XLSX.utils.sheet_to_json(ws) as any[];
 
-    const validRows = data.filter((row) => row.code && row.name);
+    const validRows = data.filter((row) => row.code && (row.name || row.company));
     const errors = data.length - validRows.length;
 
     if (validRows.length === 0) {
@@ -209,32 +209,31 @@ router.post('/import-excel', requireRole('admin', 'user'), upload.single('file')
       return;
     }
 
-    const codes = validRows.map((r: any) => r.code);
+    const codes = validRows.map((r: any) => String(r.code));
     const placeholders = codes.map(() => '?').join(',');
-    const [existing] = await conn.execute(
+    const [existing] = await conn.query(
       `SELECT code FROM clients WHERE code IN (${placeholders})`,
       codes
     ) as any[];
     const existingCodes = new Set(existing.map((r: any) => r.code));
 
-    const toInsert = validRows.filter((r: any) => !existingCodes.has(r.code));
+    const toInsert = validRows.filter((r: any) => !existingCodes.has(String(r.code)));
 
     await conn.beginTransaction();
     const BATCH = 100;
     for (let i = 0; i < toInsert.length; i += BATCH) {
       const batch = toInsert.slice(i, i + BATCH);
-      const values: any[] = [];
-      const placeholders = batch.map((row: any) => {
-        values.push(
-          generateId(), row.code, row.name, row.company || '', row.address || '',
-          row.phone || '', row.email || '', row.fiscal_id || '', row.ice || '',
-          row.commercial_id || '', row.article_id || '', row.credit_limit || 0, row.notes || ''
-        );
-        return '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-      }).join(', ');
-      await conn.execute(
-        `INSERT INTO clients (id, code, name, company, address, phone, email, fiscal_id, ice, commercial_id, article_id, credit_limit, notes) VALUES ${placeholders}`,
-        values
+      const rows: any[][] = batch.map((row: any) => [
+        generateId(), String(row.code), row.name || row.company || '', row.company || '',
+        row.address || '', row.phone || '', row.email || '', row.fiscal_id || '',
+        row.ice || '', row.commercial_id || '', row.article_id || '',
+        row.credit_limit || 0, row.notes || ''
+      ]);
+      const ph = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+      const flat = rows.flat();
+      await conn.query(
+        `INSERT INTO clients (id, code, name, company, address, phone, email, fiscal_id, ice, commercial_id, article_id, credit_limit, notes) VALUES ${ph}`,
+        flat
       );
     }
     await conn.commit();

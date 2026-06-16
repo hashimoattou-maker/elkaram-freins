@@ -271,9 +271,9 @@ router.post('/import-excel', requireRole('admin', 'user'), upload.single('file')
       return;
     }
 
-    const refs = validRows.map((r: any) => r.reference);
+    const refs = validRows.map((r: any) => String(r.reference));
     const ph = refs.map(() => '?').join(',');
-    const [existing] = await conn.execute(
+    const [existing] = await conn.query(
       `SELECT reference FROM products WHERE reference IN (${ph})`,
       refs
     ) as any[];
@@ -289,22 +289,22 @@ router.post('/import-excel', requireRole('admin', 'user'), upload.single('file')
     const BATCH = 100;
     for (let i = 0; i < toInsert.length; i += BATCH) {
       const batch = toInsert.slice(i, i + BATCH);
-      const values: any[] = [];
-      const placeholders = batch.map((row: any) => {
+      const rows: any[][] = batch.map((row: any) => {
         let categoryId: string | null = null;
         if (row.category_name && catCache[row.category_name]) {
           categoryId = catCache[row.category_name];
         }
-        values.push(
+        return [
           generateId(), row.reference, row.name, row.description || '', categoryId,
           row.barcode || generateBarcode(), row.purchase_price || 0, row.selling_price || 0,
           row.wholesale_price || 0, row.stock || 0, row.min_stock || 5, row.unit || 'piece'
-        );
-        return '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-      }).join(', ');
-      await conn.execute(
+        ];
+      });
+      const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+      const flat = rows.flat();
+      await conn.query(
         `INSERT INTO products (id, reference, name, description, category_id, barcode, purchase_price, selling_price, wholesale_price, stock, min_stock, unit) VALUES ${placeholders}`,
-        values
+        flat
       );
     }
     await conn.commit();

@@ -121,7 +121,7 @@ export default function ImportClientsPage() {
                       {preview.map((row, i) => (
                         <tr key={i} className="border-t">
                           <td className="px-3 py-2">{row.code || "-"}</td>
-                          <td className="px-3 py-2">{row.name || "-"}</td>
+                          <td className="px-3 py-2">{row.name || row.company || "-"}</td>
                           <td className="px-3 py-2">{row.company || "-"}</td>
                           <td className="px-3 py-2">{row.phone || "-"}</td>
                         </tr>

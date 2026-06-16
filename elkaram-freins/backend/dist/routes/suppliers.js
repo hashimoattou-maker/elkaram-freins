@@ -244,27 +244,29 @@ router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.
         const wb = XLSX.readFile(req.file.path);
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws);
-        const validRows = data.filter((row) => row.code && row.name);
+        const validRows = data.filter((row) => row.code && (row.name || row.company));
         const errors = data.length - validRows.length;
         if (validRows.length === 0) {
             res.json({ imported: 0, errors, total: data.length });
             return;
         }
-        const codes = validRows.map((r) => r.code);
-        const placeholders = codes.map(() => '?').join(',');
-        const [existing] = await conn.execute(`SELECT code FROM suppliers WHERE code IN (${placeholders})`, codes);
+        const codes = validRows.map((r) => String(r.code));
+        const ph = codes.map(() => '?').join(',');
+        const [existing] = await conn.query(`SELECT code FROM suppliers WHERE code IN (${ph})`, codes);
         const existingCodes = new Set(existing.map((r) => r.code));
-        const toInsert = validRows.filter((r) => !existingCodes.has(r.code));
+        const toInsert = validRows.filter((r) => !existingCodes.has(String(r.code)));
         await conn.beginTransaction();
         const BATCH = 100;
         for (let i = 0; i < toInsert.length; i += BATCH) {
             const batch = toInsert.slice(i, i + BATCH);
-            const values = [];
-            const ph = batch.map((row) => {
-                values.push((0, helpers_1.generateId)(), row.code, row.name, row.company || '', row.address || '', row.phone || '', row.email || '', row.fiscal_id || '', row.ice || '', row.notes || '');
-                return '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-            }).join(', ');
-            await conn.execute(`INSERT INTO suppliers (id, code, name, company, address, phone, email, fiscal_id, ice, notes) VALUES ${ph}`, values);
+            const rows = batch.map((row) => [
+                (0, helpers_1.generateId)(), String(row.code), row.name || row.company || '', row.company || '',
+                row.address || '', row.phone || '', row.email || '', row.fiscal_id || '',
+                row.ice || '', row.notes || ''
+            ]);
+            const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+            const flat = rows.flat();
+            await conn.query(`INSERT INTO suppliers (id, code, name, company, address, phone, email, fiscal_id, ice, notes) VALUES ${placeholders}`, flat);
         }
         await conn.commit();
         res.json({ imported: toInsert.length, errors: errors + existingCodes.size, total: data.length });
