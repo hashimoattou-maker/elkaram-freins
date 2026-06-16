@@ -256,8 +256,23 @@ router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.
         }
         const wb = XLSX.readFile(req.file.path);
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json(ws);
-        const validRows = data.filter((row) => row.code && (row.name || row.company));
+        const data = XLSX.utils.sheet_to_json(ws, { raw: false });
+        const mapKeys = (row) => ({
+            code: row.code || row.Code || row.CODE || '',
+            name: row.name || row.Name || row.Nom || row.nom || '',
+            company: row.company || row.Company || row.Société || row.societe || row['Societe'] || row.society || '',
+            address: row.address || row.Address || row.Adresse || row.adresse || '',
+            phone: row.phone || row.Phone || row.Téléphone || row.telephone || row.Tel || row.tel || '',
+            email: row.email || row.Email || '',
+            fiscal_id: row.fiscal_id || row['Fiscal ID'] || row['N° fiscal'] || '',
+            ice: row.ice || row.ICE || row['N° ICE'] || '',
+            commercial_id: row.commercial_id || row.commercial || '',
+            article_id: row.article_id || '',
+            credit_limit: row.credit_limit || row['Crédit'] || 0,
+            notes: row.notes || row.Notes || row.Remarques || '',
+        });
+        const mapped = data.map(mapKeys);
+        const validRows = mapped.filter((row) => row.code && (row.name || row.company));
         const errors = data.length - validRows.length;
         if (validRows.length === 0) {
             res.json({ imported: 0, errors, total: data.length });

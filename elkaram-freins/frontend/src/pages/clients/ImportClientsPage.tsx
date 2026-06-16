@@ -36,8 +36,14 @@ export default function ImportClientsPage() {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json<ImportRow>(sheet);
-        setPreview(json.slice(0, 10));
+        const raw = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { raw: false });
+        const mapped = raw.map((row) => ({
+          code: row.code || row.Code || row.CODE || "",
+          name: row.name || row.Name || row.Nom || row.nom || "",
+          company: row.company || row.Company || row.Société || row.societe || row["Societe"] || "",
+          phone: row.phone || row.Phone || row.Téléphone || row.telephone || row.Tel || "",
+        }));
+        setPreview(mapped.slice(0, 10));
       } catch {
         setError("Erreur de lecture du fichier");
       }
