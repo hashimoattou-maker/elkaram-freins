@@ -196,25 +196,45 @@ router.post('/import-excel', requireRole('admin', 'user'), upload.single('file')
     const wb = XLSX.readFile(req.file.path);
     const ws = wb.Sheets[wb.SheetNames[0]];
     const data = XLSX.utils.sheet_to_json(ws) as any[];
-    let imported = 0;
-    let errors = 0;
+
+    const validRows = data.filter((row) => row.code && row.name);
+    const errors = data.length - validRows.length;
+
+    if (validRows.length === 0) {
+      res.json({ imported: 0, errors, total: data.length });
+      return;
+    }
+
+    const codes = validRows.map((r: any) => r.code);
+    const placeholders = codes.map(() => '?').join(',');
+    const [existing] = await conn.execute(
+      `SELECT code FROM suppliers WHERE code IN (${placeholders})`,
+      codes
+    ) as any[];
+    const existingCodes = new Set(existing.map((r: any) => r.code));
+
+    const toInsert = validRows.filter((r: any) => !existingCodes.has(r.code));
 
     await conn.beginTransaction();
-    for (const row of data) {
-      try {
-        if (!row.code || !row.name) { errors++; continue; }
-        const [existsRows] = await conn.execute('SELECT id FROM suppliers WHERE code = ?', [row.code]) as any;
-        if (existsRows.length > 0) { errors++; continue; }
-        await conn.execute(
-          `INSERT INTO suppliers (id, code, name, company, address, phone, email, fiscal_id, ice, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [generateId(), row.code, row.name, row.company || '', row.address || '', row.phone || '', row.email || '', row.fiscal_id || '', row.ice || '', row.notes || '']
+    const BATCH = 100;
+    for (let i = 0; i < toInsert.length; i += BATCH) {
+      const batch = toInsert.slice(i, i + BATCH);
+      const values: any[] = [];
+      const ph = batch.map((row: any) => {
+        values.push(
+          generateId(), row.code, row.name, row.company || '', row.address || '',
+          row.phone || '', row.email || '', row.fiscal_id || '', row.ice || '', row.notes || ''
         );
-        imported++;
-      } catch { errors++; }
+        return '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+      }).join(', ');
+      await conn.execute(
+        `INSERT INTO suppliers (id, code, name, company, address, phone, email, fiscal_id, ice, notes) VALUES ${ph}`,
+        values
+      );
     }
     await conn.commit();
 
-    res.json({ imported, errors, total: data.length });
+    res.json({ imported: toInsert.length, errors: errors + existingCodes.size, total: data.length });
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ error: 'Erreur lors de l\'importation' });

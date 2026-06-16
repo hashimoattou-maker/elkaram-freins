@@ -312,47 +312,39 @@ router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.
         const wb = XLSX.readFile(req.file.path);
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws);
-        let imported = 0;
-        let errors = 0;
+        const validRows = data.filter((row) => row.reference && row.name);
+        const errors = data.length - validRows.length;
+        if (validRows.length === 0) {
+            res.json({ imported: 0, errors, total: data.length });
+            return;
+        }
+        const refs = validRows.map((r) => r.reference);
+        const ph = refs.map(() => '?').join(',');
+        const [existing] = await conn.execute(`SELECT reference FROM products WHERE reference IN (${ph})`, refs);
+        const existingRefs = new Set(existing.map((r) => r.reference));
         const catCache = {};
+        const [allCats] = await conn.execute('SELECT id, name FROM categories');
+        for (const c of allCats) {
+            catCache[c.name] = c.id;
+        }
+        const toInsert = validRows.filter((r) => !existingRefs.has(r.reference));
         await conn.beginTransaction();
-        for (const row of data) {
-            try {
-                if (!row.reference || !row.name) {
-                    errors++;
-                    continue;
-                }
-                const [existsRows] = await conn.execute('SELECT id FROM products WHERE reference = ?', [row.reference]);
-                if (existsRows.length > 0) {
-                    errors++;
-                    continue;
-                }
+        const BATCH = 100;
+        for (let i = 0; i < toInsert.length; i += BATCH) {
+            const batch = toInsert.slice(i, i + BATCH);
+            const values = [];
+            const placeholders = batch.map((row) => {
                 let categoryId = null;
-                if (row.category_name) {
-                    if (catCache[row.category_name]) {
-                        categoryId = catCache[row.category_name];
-                    }
-                    else {
-                        const [catRows] = await conn.execute('SELECT id FROM categories WHERE name = ?', [row.category_name]);
-                        if (catRows.length > 0) {
-                            categoryId = catRows[0].id;
-                            catCache[row.category_name] = catRows[0].id;
-                        }
-                    }
+                if (row.category_name && catCache[row.category_name]) {
+                    categoryId = catCache[row.category_name];
                 }
-                const barcode = row.barcode || (0, helpers_1.generateBarcode)();
-                await conn.execute(`INSERT INTO products (id, reference, name, description, category_id, barcode, purchase_price, selling_price, wholesale_price, stock, min_stock, unit)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [(0, helpers_1.generateId)(), row.reference, row.name, row.description || '', categoryId,
-                    barcode, row.purchase_price || 0, row.selling_price || 0, row.wholesale_price || 0,
-                    row.stock || 0, row.min_stock || 5, row.unit || 'piece']);
-                imported++;
-            }
-            catch {
-                errors++;
-            }
+                values.push((0, helpers_1.generateId)(), row.reference, row.name, row.description || '', categoryId, row.barcode || (0, helpers_1.generateBarcode)(), row.purchase_price || 0, row.selling_price || 0, row.wholesale_price || 0, row.stock || 0, row.min_stock || 5, row.unit || 'piece');
+                return '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+            }).join(', ');
+            await conn.execute(`INSERT INTO products (id, reference, name, description, category_id, barcode, purchase_price, selling_price, wholesale_price, stock, min_stock, unit) VALUES ${placeholders}`, values);
         }
         await conn.commit();
-        res.json({ imported, errors, total: data.length });
+        res.json({ imported: toInsert.length, errors: errors + existingRefs.size, total: data.length });
     }
     catch (err) {
         await conn.rollback();

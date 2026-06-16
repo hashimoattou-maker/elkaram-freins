@@ -82,24 +82,17 @@ export default function ProductsPage() {
 
   const handleExport = async () => {
     try {
-      const { default: XLSX } = await import("xlsx");
-      const ws = XLSX.utils.json_to_sheet(
-        productList.map((p) => ({
-          Référence: p.reference,
-          Nom: p.name,
-          Catégorie: p.categoryName || "",
-          "Code-barres": p.barcode || "",
-          "Prix Achat": p.purchasePrice,
-          "Prix Vente": p.sellingPrice,
-          Stock: p.stock,
-          Unité: p.unit,
-        }))
-      );
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Produits");
-      XLSX.writeFile(wb, "produits.xlsx");
-    } catch {
-      // ignore
+      const blob = await products.exportExcel();
+      const url = window.URL.createObjectURL(blob as Blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "produits.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error("Export failed:", err);
     }
   };
 

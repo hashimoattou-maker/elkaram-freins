@@ -262,45 +262,54 @@ router.post('/import-excel', requireRole('admin', 'user'), upload.single('file')
     const wb = XLSX.readFile(req.file.path);
     const ws = wb.Sheets[wb.SheetNames[0]];
     const data = XLSX.utils.sheet_to_json(ws) as any[];
-    let imported = 0;
-    let errors = 0;
+
+    const validRows = data.filter((row) => row.reference && row.name);
+    const errors = data.length - validRows.length;
+
+    if (validRows.length === 0) {
+      res.json({ imported: 0, errors, total: data.length });
+      return;
+    }
+
+    const refs = validRows.map((r: any) => r.reference);
+    const ph = refs.map(() => '?').join(',');
+    const [existing] = await conn.execute(
+      `SELECT reference FROM products WHERE reference IN (${ph})`,
+      refs
+    ) as any[];
+    const existingRefs = new Set(existing.map((r: any) => r.reference));
 
     const catCache: Record<string, string> = {};
+    const [allCats] = await conn.execute('SELECT id, name FROM categories') as any[];
+    for (const c of allCats) { catCache[c.name] = c.id; }
+
+    const toInsert = validRows.filter((r: any) => !existingRefs.has(r.reference));
 
     await conn.beginTransaction();
-    for (const row of data) {
-      try {
-        if (!row.reference || !row.name) { errors++; continue; }
-        const [existsRows] = await conn.execute('SELECT id FROM products WHERE reference = ?', [row.reference]) as any;
-        if (existsRows.length > 0) { errors++; continue; }
-
+    const BATCH = 100;
+    for (let i = 0; i < toInsert.length; i += BATCH) {
+      const batch = toInsert.slice(i, i + BATCH);
+      const values: any[] = [];
+      const placeholders = batch.map((row: any) => {
         let categoryId: string | null = null;
-        if (row.category_name) {
-          if (catCache[row.category_name]) {
-            categoryId = catCache[row.category_name];
-          } else {
-            const [catRows] = await conn.execute('SELECT id FROM categories WHERE name = ?', [row.category_name]) as any;
-            if (catRows.length > 0) {
-              categoryId = catRows[0].id;
-              catCache[row.category_name] = catRows[0].id;
-            }
-          }
+        if (row.category_name && catCache[row.category_name]) {
+          categoryId = catCache[row.category_name];
         }
-
-        const barcode = row.barcode || generateBarcode();
-        await conn.execute(
-          `INSERT INTO products (id, reference, name, description, category_id, barcode, purchase_price, selling_price, wholesale_price, stock, min_stock, unit)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [generateId(), row.reference, row.name, row.description || '', categoryId,
-           barcode, row.purchase_price || 0, row.selling_price || 0, row.wholesale_price || 0,
-           row.stock || 0, row.min_stock || 5, row.unit || 'piece']
+        values.push(
+          generateId(), row.reference, row.name, row.description || '', categoryId,
+          row.barcode || generateBarcode(), row.purchase_price || 0, row.selling_price || 0,
+          row.wholesale_price || 0, row.stock || 0, row.min_stock || 5, row.unit || 'piece'
         );
-        imported++;
-      } catch { errors++; }
+        return '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+      }).join(', ');
+      await conn.execute(
+        `INSERT INTO products (id, reference, name, description, category_id, barcode, purchase_price, selling_price, wholesale_price, stock, min_stock, unit) VALUES ${placeholders}`,
+        values
+      );
     }
     await conn.commit();
 
-    res.json({ imported, errors, total: data.length });
+    res.json({ imported: toInsert.length, errors: errors + existingRefs.size, total: data.length });
   } catch (err) {
     await conn.rollback();
     res.status(500).json({ error: 'Erreur lors de l\'importation' });
