@@ -68,7 +68,7 @@ export const products = {
   importExcel: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return api.post<ImportResult>("/products/import-excel", fd, { timeout: 120000 }).then((r) => r.data);
+    return api.post<ImportResult>("/products/import-excel", fd, { timeout: 120000, headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data);
   },
   exportExcel: () => api.get("/products/export", { responseType: "blob" }).then((r) => r.data),
 };
@@ -85,7 +85,7 @@ export const clients = {
   importExcel: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return api.post<ImportResult>("/clients/import-excel", fd, { timeout: 120000 }).then((r) => r.data);
+    return api.post<ImportResult>("/clients/import-excel", fd, { timeout: 120000, headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data);
   },
   exportExcel: () => api.get("/clients/export", { responseType: "blob" }).then((r) => r.data),
 };
@@ -102,7 +102,7 @@ export const suppliers = {
   importExcel: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return api.post<ImportResult>("/suppliers/import-excel", fd, { timeout: 120000 }).then((r) => r.data);
+    return api.post<ImportResult>("/suppliers/import-excel", fd, { timeout: 120000, headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data);
   },
   exportExcel: () => api.get("/suppliers/export", { responseType: "blob" }).then((r) => r.data),
 };
