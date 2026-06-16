@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Table,
   TableBody,
@@ -242,16 +243,17 @@ export default function SalesDocumentFormPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Client *</Label>
-              <Select value={form.clientId} onValueChange={(v) => setForm((f) => ({ ...f, clientId: v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={clients.map((c) => ({
+                  value: String(c.id),
+                  label: c.name,
+                  sublabel: c.company || c.code,
+                }))}
+                value={form.clientId}
+                onChange={(v) => setForm((f) => ({ ...f, clientId: v }))}
+                placeholder="Sélectionner un client"
+                searchPlaceholder="Tapez le nom du client..."
+              />
               {form.clientId && (() => {
                 const selected = clients.find((c) => String(c.id) === form.clientId);
                 if (!selected) return null;

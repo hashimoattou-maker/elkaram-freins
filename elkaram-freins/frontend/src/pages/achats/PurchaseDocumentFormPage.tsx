@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Table,
   TableBody,
@@ -244,21 +245,17 @@ export default function PurchaseDocumentFormPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Fournisseur *</Label>
-              <Select
+              <Combobox
+                options={suppliers.map((s) => ({
+                  value: String(s.id),
+                  label: s.name,
+                  sublabel: s.company || s.code,
+                }))}
                 value={form.supplierId}
-                onValueChange={(v) => setForm((f) => ({ ...f, supplierId: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {suppliers.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(v) => setForm((f) => ({ ...f, supplierId: v }))}
+                placeholder="Sélectionner un fournisseur"
+                searchPlaceholder="Tapez le nom du fournisseur..."
+              />
               {form.supplierId && (() => {
                 const selected = suppliers.find((s) => String(s.id) === form.supplierId);
                 if (!selected) return null;
