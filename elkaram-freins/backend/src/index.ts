@@ -18,6 +18,9 @@ import dashboardRoutes from './routes/dashboard';
 import settingsRoutes from './routes/settings';
 import stockRoutes from './routes/stock';
 
+const uploadsDir = path.resolve(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) { fs.mkdirSync(uploadsDir, { recursive: true }); }
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 

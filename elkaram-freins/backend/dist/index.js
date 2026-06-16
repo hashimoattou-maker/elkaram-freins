@@ -9,6 +9,7 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const morgan_1 = __importDefault(require("morgan"));
 const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const users_1 = __importDefault(require("./routes/users"));
 const products_1 = __importDefault(require("./routes/products"));
@@ -19,6 +20,10 @@ const documents_1 = __importDefault(require("./routes/documents"));
 const dashboard_1 = __importDefault(require("./routes/dashboard"));
 const settings_1 = __importDefault(require("./routes/settings"));
 const stock_1 = __importDefault(require("./routes/stock"));
+const uploadsDir = path_1.default.resolve(__dirname, '../uploads');
+if (!fs_1.default.existsSync(uploadsDir)) {
+    fs_1.default.mkdirSync(uploadsDir, { recursive: true });
+}
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5000;
 app.use((0, cors_1.default)());

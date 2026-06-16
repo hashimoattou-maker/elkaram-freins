@@ -232,7 +232,8 @@ router.post('/import-excel', requireRole('admin', 'user'), upload.single('file')
 
     res.json({ imported, errors: errors + (toInsert.length - imported), total: data.length });
   } catch (err) {
-    await conn.rollback();
+    console.error('Client import error:', err);
+    await conn.rollback().catch(() => {});
     res.status(500).json({ error: 'Erreur lors de l\'importation des clients' });
   } finally {
     conn.release();
