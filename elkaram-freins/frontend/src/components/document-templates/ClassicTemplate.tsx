@@ -175,28 +175,6 @@ export default function ClassicTemplate({ document, company, design }: ClassicTe
       </table>
 
       <div style={{ textAlign: "right", fontSize: "14px" }}>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "40px", marginBottom: "5px" }}>
-          <span className="text-gray-600 dark:text-gray-400 print:text-gray-600">HT:</span>
-          <span style={{ fontWeight: "bold" }}>{formatCurrency(document.subtotal)}</span>
-        </div>
-        {document.discount > 0 && (
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "40px", marginBottom: "5px" }}>
-            <span className="text-gray-600 dark:text-gray-400 print:text-gray-600">Remise:</span>
-            <span style={{ fontWeight: "bold" }}>
-              -{document.discountType === "percentage" ? `${document.discount}%` : formatCurrency(document.discount)}
-            </span>
-          </div>
-        )}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "40px", marginBottom: "5px" }}>
-          <span className="text-gray-600 dark:text-gray-400 print:text-gray-600">TVA ({document.taxRate}%):</span>
-          <span>{formatCurrency(document.taxAmount)}</span>
-        </div>
-        {document.shipping > 0 && (
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "40px", marginBottom: "5px" }}>
-            <span className="text-gray-600 dark:text-gray-400 print:text-gray-600">Frais de port:</span>
-            <span>{formatCurrency(document.shipping)}</span>
-          </div>
-        )}
         <div
           style={{
             display: "flex",

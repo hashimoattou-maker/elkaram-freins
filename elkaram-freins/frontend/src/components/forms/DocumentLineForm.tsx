@@ -30,7 +30,7 @@ export default function DocumentLineForm({
   readOnly = false,
   taxRate = 20,
 }: DocumentLineFormProps) {
-  const totalHt = (line: DocumentLine) => line.quantity * line.unitPrice - (line.discount || 0);
+  const totalHt = (line: DocumentLine) => line.quantity * line.unitPrice;
   const puTTC = (line: DocumentLine) => line.unitPrice * (1 + taxRate / 100);
   const montantTTC = (line: DocumentLine) => puTTC(line) * line.quantity;
 
@@ -57,7 +57,10 @@ export default function DocumentLineForm({
                 </TableCell>
               </TableRow>
             ) : (
-              lines.map((line, index) => (
+              lines.map((line, index) => {
+                const puHT = line.unitPrice || 0;
+                const pTTC = puHT * (1 + taxRate / 100);
+                return (
                 <TableRow key={line.id}>
                   <TableCell>
                     {readOnly ? (
@@ -94,20 +97,24 @@ export default function DocumentLineForm({
                       />
                     )}
                   </TableCell>
+                  <TableCell className="font-medium">{formatCurrency(puHT)}</TableCell>
                   <TableCell>
                     {readOnly ? (
-                      formatCurrency(line.unitPrice)
+                      formatCurrency(pTTC)
                     ) : (
                       <Input
                         type="number"
                         step="0.01"
-                        value={line.unitPrice}
-                        onChange={(e) => onUpdate(index, "unitPrice", Number(e.target.value))}
+                        value={pTTC.toFixed(2)}
+                        onChange={(e) => {
+                          const puTtc = Number(e.target.value) || 0;
+                          const puHt = puTtc / (1 + taxRate / 100);
+                          onUpdate(index, "unitPrice", Math.round(puHt * 100) / 100);
+                        }}
                         className="w-24"
                       />
                     )}
                   </TableCell>
-                  <TableCell className="font-medium">{formatCurrency(puTTC(line))}</TableCell>
                   <TableCell className="font-medium">{formatCurrency(montantTTC(line))}</TableCell>
                   {!readOnly && (
                     <TableCell>
@@ -123,7 +130,8 @@ export default function DocumentLineForm({
                     </TableCell>
                   )}
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

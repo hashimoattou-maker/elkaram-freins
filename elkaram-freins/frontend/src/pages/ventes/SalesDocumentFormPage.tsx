@@ -107,12 +107,20 @@ export default function SalesDocumentFormPage() {
     }
   }, [type, id, isEdit, navigate, searchParams]);
 
-  const updateLine = (index: number, field: keyof DocumentLine, value: string | number) => {
+  const updateLine = (index: number, field: keyof DocumentLine | "puTtc", value: string | number) => {
     setLines((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      const ht = updated[index].quantity * updated[index].unitPrice - (updated[index].discount || 0);
       const tva = Number(form.taxRate);
+      if (field === "puTtc") {
+        const puTtc = Number(value) || 0;
+        const puHt = puTtc / (1 + tva / 100);
+        updated[index] = { ...updated[index], unitPrice: Math.round(puHt * 100) / 100 };
+      } else {
+        updated[index] = { ...updated[index], [field]: value };
+      }
+      const puHT = updated[index].unitPrice || 0;
+      const qty = updated[index].quantity || 0;
+      const ht = qty * puHT;
       updated[index].total = ht;
       updated[index].totalHt = ht;
       updated[index].totalTtc = ht * (1 + tva / 100);
@@ -136,20 +144,23 @@ export default function SalesDocumentFormPage() {
   const selectProduct = (index: number, product: Product) => {
     setLines((prev) => {
       const updated = [...prev];
+      const tva = Number(form.taxRate);
+      const puHt = product.sellingPrice;
+      const puTtc = puHt * (1 + tva / 100);
       updated[index] = {
         ...updated[index],
         productId: product.id,
         ref: product.reference,
         description: product.name,
-        unitPrice: product.sellingPrice,
+        unitPrice: puHt,
         quantity: 1,
         discount: 0,
-        taxRate: Number(form.taxRate),
-        total: product.sellingPrice,
-        totalHt: product.sellingPrice,
-        totalTtc: product.sellingPrice * (1 + Number(form.taxRate) / 100),
-        taxAmount: product.sellingPrice * (Number(form.taxRate) / 100),
-      };
+        taxRate: tva,
+        total: puHt,
+        totalHt: puHt,
+        totalTtc: puTtc,
+        taxAmount: puHt * (tva / 100),
+      } as any;
       return updated;
     });
     setProductSearch("");
@@ -330,11 +341,11 @@ export default function SalesDocumentFormPage() {
                 </TableHeader>
                 <TableBody>
                   {lines.map((line, index) => {
-                    const puHT = line.unitPrice;
                     const tva = Number(form.taxRate);
-                    const puTTC = puHT * (1 + tva / 100);
-                    const qty = line.quantity;
-                    const montantTTC = puTTC * qty;
+                    const puHT = line.unitPrice || 0;
+                    const puTtc = puHT * (1 + tva / 100);
+                    const qty = line.quantity || 0;
+                    const montantTTC = puTtc * qty;
                     return (
                       <TableRow key={line.id}>
                         <TableCell>
@@ -346,10 +357,10 @@ export default function SalesDocumentFormPage() {
                         <TableCell>
                           <Input type="number" value={line.quantity} onChange={(e) => updateLine(index, "quantity", Number(e.target.value))} className="w-16" />
                         </TableCell>
+                        <TableCell className="font-medium text-xs">{formatCurrency(puHT)}</TableCell>
                         <TableCell>
-                          <Input type="number" step="0.01" value={line.unitPrice} onChange={(e) => updateLine(index, "unitPrice", Number(e.target.value))} className="w-24" />
+                          <Input type="number" step="0.01" value={puTtc.toFixed(2)} onChange={(e) => updateLine(index, "puTtc" as any, Number(e.target.value))} className="w-24" />
                         </TableCell>
-                        <TableCell className="font-medium text-xs">{formatCurrency(puTTC)}</TableCell>
                         <TableCell className="font-medium text-xs">{formatCurrency(montantTTC)}</TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" className="text-red-600 h-8 w-8" onClick={() => removeLine(index)}>

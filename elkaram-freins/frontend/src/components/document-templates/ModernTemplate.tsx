@@ -137,26 +137,6 @@ export default function ModernTemplate({ document, company, design }: ModernTemp
 
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "25px" }}>
         <div style={{ width: "300px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: "14px" }}>
-            <span>HT:</span>
-            <span>{formatCurrency(document.subtotal)}</span>
-          </div>
-          {document.discount > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: "14px" }}>
-              <span>Remise:</span>
-              <span>-{document.discountType === "percentage" ? `${document.discount}%` : formatCurrency(document.discount)}</span>
-            </div>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: "14px" }}>
-            <span>TVA ({document.taxRate}%):</span>
-            <span>{formatCurrency(document.taxAmount)}</span>
-          </div>
-          {document.shipping > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: "14px" }}>
-              <span>Frais de port:</span>
-              <span>{formatCurrency(document.shipping)}</span>
-            </div>
-          )}
           <div
             style={{
               display: "flex",

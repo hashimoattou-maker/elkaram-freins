@@ -89,26 +89,6 @@ export default function MinimalTemplate({ document, company, design }: MinimalTe
 
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <div style={{ width: "250px" }}>
-          <div className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "12px", color: "#888" }}>
-            <span>HT</span>
-            <span>{formatCurrency(document.subtotal)}</span>
-          </div>
-          {document.discount > 0 && (
-            <div className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "12px", color: "#888" }}>
-              <span>Remise</span>
-              <span>-{document.discountType === "percentage" ? `${document.discount}%` : formatCurrency(document.discount)}</span>
-            </div>
-          )}
-          <div className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "12px", color: "#888" }}>
-            <span>TVA ({document.taxRate}%)</span>
-            <span>{formatCurrency(document.taxAmount)}</span>
-          </div>
-          {document.shipping > 0 && (
-            <div className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "12px", color: "#888" }}>
-              <span>Frais de port</span>
-              <span>{formatCurrency(document.shipping)}</span>
-            </div>
-          )}
           <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", marginTop: "5px", borderTop: "1px solid #333", fontSize: "16px", fontWeight: "500" }}>
             <span>Total TTC</span>
             <span>{formatCurrency(document.total)}</span>

@@ -106,12 +106,20 @@ export default function PurchaseDocumentFormPage() {
     }
   }, [type, id, isEdit, navigate, searchParams]);
 
-  const updateLine = (index: number, field: keyof DocumentLine, value: string | number) => {
+  const updateLine = (index: number, field: keyof DocumentLine | "puTtc", value: string | number) => {
     setLines((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      const ht = updated[index].quantity * updated[index].unitPrice - (updated[index].discount || 0);
       const tva = Number(form.taxRate);
+      if (field === "puTtc") {
+        const puTtc = Number(value) || 0;
+        const puHt = puTtc / (1 + tva / 100);
+        updated[index] = { ...updated[index], unitPrice: Math.round(puHt * 100) / 100 };
+      } else {
+        updated[index] = { ...updated[index], [field]: value };
+      }
+      const puHT = updated[index].unitPrice || 0;
+      const qty = updated[index].quantity || 0;
+      const ht = qty * puHT;
       updated[index].total = ht;
       updated[index].totalHt = ht;
       updated[index].totalTtc = ht * (1 + tva / 100);
@@ -335,7 +343,6 @@ export default function PurchaseDocumentFormPage() {
                     <TableHead>Article</TableHead>
                     <TableHead className="w-16">Qté</TableHead>
                     <TableHead className="w-24">P.U/HT</TableHead>
-                    <TableHead className="w-24">Remise</TableHead>
                     <TableHead className="w-24">P.U/TTC</TableHead>
                     <TableHead className="w-24">Montant TTC</TableHead>
                     <TableHead className="w-10"></TableHead>
@@ -343,12 +350,11 @@ export default function PurchaseDocumentFormPage() {
                 </TableHeader>
                 <TableBody>
                   {lines.map((line, index) => {
-                    const ht = line.quantity * line.unitPrice - (line.discount || 0);
                     const tva = Number(form.taxRate);
-                    const puHT = line.unitPrice - ((line.discount || 0) / (line.quantity || 1));
-                    const puTTC = puHT * (1 + tva / 100);
-                    const mtTva = ht * (tva / 100);
-                    const ttc = ht + mtTva;
+                    const puHT = line.unitPrice || 0;
+                    const puTtc = puHT * (1 + tva / 100);
+                    const qty = line.quantity || 0;
+                    const montantTTC = puTtc * qty;
                     return (
                       <TableRow key={line.id}>
                         <TableCell>
@@ -360,14 +366,11 @@ export default function PurchaseDocumentFormPage() {
                         <TableCell>
                           <Input type="number" value={line.quantity} onChange={(e) => updateLine(index, "quantity", Number(e.target.value))} className="w-16" />
                         </TableCell>
+                        <TableCell className="font-medium text-xs">{formatCurrency(puHT)}</TableCell>
                         <TableCell>
-                          <Input type="number" step="0.01" value={line.unitPrice} onChange={(e) => updateLine(index, "unitPrice", Number(e.target.value))} className="w-24" />
+                          <Input type="number" step="0.01" value={puTtc.toFixed(2)} onChange={(e) => updateLine(index, "puTtc" as any, Number(e.target.value))} className="w-24" />
                         </TableCell>
-                        <TableCell>
-                          <Input type="number" step="0.01" value={line.discount || 0} onChange={(e) => updateLine(index, "discount", Number(e.target.value))} className="w-24" />
-                        </TableCell>
-                        <TableCell className="font-medium text-xs">{formatCurrency(puTTC)}</TableCell>
-                        <TableCell className="font-medium text-xs">{formatCurrency(ttc)}</TableCell>
+                        <TableCell className="font-medium text-xs">{formatCurrency(montantTTC)}</TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" className="text-red-600 h-8 w-8" onClick={() => removeLine(index)}>
                             <Trash2 className="h-4 w-4" />

@@ -133,26 +133,6 @@ export default function ProfessionalTemplate({ document, company, design }: Prof
 
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <div style={{ width: "280px" }}>
-          <div className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "12px", color: "#666" }}>
-            <span>HT:</span>
-            <span>{formatCurrency(document.subtotal)}</span>
-          </div>
-          {document.discount > 0 && (
-            <div className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "12px", color: "#666" }}>
-              <span>Remise:</span>
-              <span>-{document.discountType === "percentage" ? `${document.discount}%` : formatCurrency(document.discount)}</span>
-            </div>
-          )}
-          <div className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "12px", color: "#666" }}>
-            <span>TVA ({document.taxRate}%):</span>
-            <span>{formatCurrency(document.taxAmount)}</span>
-          </div>
-          {document.shipping > 0 && (
-            <div className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "12px", color: "#666" }}>
-              <span>Frais de port:</span>
-              <span>{formatCurrency(document.shipping)}</span>
-            </div>
-          )}
           <div
             className="text-gray-800 dark:text-gray-200 print:text-gray-800"
             style={{
