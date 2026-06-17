@@ -259,6 +259,10 @@ async function migrate(pool) {
             await conn.execute("ALTER TABLE company_settings ADD COLUMN logo_base64 LONGTEXT AFTER logo_path");
         }
         catch { /* column may already exist */ }
+        try {
+            await conn.execute("ALTER TABLE suppliers ADD COLUMN ice VARCHAR(255) AFTER fiscal_id");
+        }
+        catch { /* column may already exist */ }
         // Seed default admin user
         const [userRows] = await conn.execute('SELECT COUNT(*) as count FROM users');
         if (userRows[0].count === 0) {
