@@ -311,8 +311,22 @@ router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.
         }
         const wb = XLSX.read(req.file.buffer);
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json(ws);
-        const validRows = data.filter((row) => row.reference && row.name);
+        const data = XLSX.utils.sheet_to_json(ws, { raw: false });
+        const mapKeys = (row) => ({
+            reference: row.reference || row.Reference || row.Référence || row.reference || '',
+            name: row.name || row.Name || row.Nom || row.nom || '',
+            description: row.description || row.Description || '',
+            category_name: row.category_name || row.category || row.Catégorie || row.categorie || '',
+            barcode: row.barcode || row.Barcode || row['Code-barres'] || row.code_barres || '',
+            purchase_price: Number(row.purchase_price || row.prix_achat || row['Prix Achat'] || 0),
+            selling_price: Number(row.selling_price || row.prix_vente || row['Prix Vente'] || 0),
+            wholesale_price: Number(row.wholesale_price || row.prix_gros || row['Prix Gros'] || 0),
+            stock: Number(row.stock || row.Stock || 0),
+            min_stock: Number(row.min_stock || row.stock_min || 5),
+            unit: row.unit || row.unité || row.Unité || 'piece',
+        });
+        const mapped = data.map(mapKeys);
+        const validRows = mapped.filter((row) => row.reference && row.name);
         const errors = data.length - validRows.length;
         if (validRows.length === 0) {
             res.json({ imported: 0, errors, total: data.length });

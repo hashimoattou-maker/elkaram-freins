@@ -38,8 +38,18 @@ export default function ImportSuppliersPage() {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json<ImportRow>(sheet);
-        setPreview(json.slice(0, 10));
+        const raw = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { raw: false });
+        const mapped = raw.map((row) => ({
+          code: row.code || row.Code || row.CODE || "",
+          name: row.name || row.Name || row.Nom || row.nom || "",
+          company: row.company || row.Company || row.Société || row.societe || row["Societe"] || "",
+          phone: row.phone || row.Phone || row.Téléphone || row.telephone || row.Tel || "",
+          email: row.email || row.Email || "",
+          address: row.address || row.Address || row.Adresse || "",
+          fiscal_id: row.fiscal_id || "",
+          ice: row.ice || "",
+        }));
+        setPreview(mapped.slice(0, 10));
       } catch {
         setError("Erreur de lecture du fichier");
       }
@@ -54,8 +64,9 @@ export default function ImportSuppliersPage() {
     try {
       const res = await suppliersApi.importExcel(file);
       setResult({ imported: res.imported, errors: res.errors });
-    } catch {
-      setError("Erreur lors de l'importation");
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || "Erreur lors de l'importation";
+      setError(msg);
     } finally {
       setImporting(false);
     }
