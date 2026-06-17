@@ -243,33 +243,32 @@ router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.
         }
         const wb = XLSX.read(req.file.buffer);
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json(ws, { raw: false });
+        const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
         const rawKeys = data.length > 0 ? Object.keys(data[0]) : [];
-        const findKey = (row, candidates) => {
-            const keys = Object.keys(row);
-            for (const c of candidates) {
-                const found = keys.find((k) => k.toLowerCase().trim() === c.toLowerCase());
-                if (found && row[found])
-                    return row[found];
-            }
-            return '';
-        };
-        const mapKeys = (row) => ({
-            code: findKey(row, ['code', 'Code', 'CODE']),
-            name: findKey(row, ['name', 'Name', 'Nom', 'nom']),
-            company: findKey(row, ['company', 'Company', 'Société', 'societe', 'Societe', 'SOCIETE', 'society']),
-            address: findKey(row, ['address', 'Address', 'Adresse', 'adresse']),
-            phone: findKey(row, ['phone', 'Phone', 'Téléphone', 'telephone', 'Tel', 'tel']),
-            email: findKey(row, ['email', 'Email']),
-            fiscal_id: findKey(row, ['fiscal_id', 'Fiscal ID', 'N° fiscal']),
-            ice: findKey(row, ['ice', 'ICE', 'N° ICE']),
-            notes: findKey(row, ['notes', 'Notes', 'Remarques']),
+        const mapped = data.map((row) => {
+            const get = (def, ...candidates) => {
+                for (const c of candidates) {
+                    if (row[c] !== undefined && row[c] !== null && row[c] !== '')
+                        return String(row[c]);
+                }
+                return def;
+            };
+            return {
+                code: get('', 'code', 'Code', 'CODE'),
+                name: get('', 'name', 'Name', 'Nom', 'nom'),
+                company: get('', 'company', 'Company', 'Société', 'societe', 'Societe', 'SOCIETE', 'society'),
+                address: get('', 'address', 'Address', 'Adresse', 'adresse'),
+                phone: get('', 'phone', 'Phone', 'Téléphone', 'telephone', 'Tel', 'tel'),
+                email: get('', 'email', 'Email'),
+                fiscal_id: get('', 'fiscal_id', 'Fiscal ID', 'N° fiscal'),
+                ice: get('', 'ice', 'ICE', 'N° ICE'),
+                notes: get('', 'notes', 'Notes', 'Remarques'),
+            };
         });
-        const mapped = data.map(mapKeys);
         const validRows = mapped.filter((row) => row.code && (row.name || row.company));
         const errors = data.length - validRows.length;
         if (validRows.length === 0) {
-            res.json({ imported: 0, errors, total: data.length, rawKeys });
+            res.json({ imported: 0, errors, total: data.length, rawKeys, debug: data.length > 0 ? Object.keys(data[0]) : [] });
             return;
         }
         const [existingRows] = await conn.query('SELECT code FROM suppliers');
