@@ -359,7 +359,7 @@ export default function SalesDocumentFormPage() {
                         </TableCell>
                         <TableCell className="font-medium text-xs">{formatCurrency(puHT)}</TableCell>
                         <TableCell>
-                          <Input type="number" step="0.01" value={puTtc.toFixed(2)} onChange={(e) => updateLine(index, "puTtc" as any, Number(e.target.value))} className="w-24" />
+                          <Input type="number" step="0.01" defaultValue={puTtc || ""} onBlur={(e) => updateLine(index, "puTtc" as any, Number(e.target.value))} className="w-24" />
                         </TableCell>
                         <TableCell className="font-medium text-xs">{formatCurrency(montantTTC)}</TableCell>
                         <TableCell>
