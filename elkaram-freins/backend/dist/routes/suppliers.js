@@ -240,6 +240,7 @@ router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.
             res.status(400).json({ error: 'Fichier requis' });
             return;
         }
+        const replace = req.body.replace === 'true' || req.body.replace === '1';
         const wb = XLSX.read(req.file.buffer);
         const ws = wb.Sheets[wb.SheetNames[0]];
         const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
@@ -281,14 +282,27 @@ router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.
         const conn = await database_1.default.getConnection();
         try {
             await conn.beginTransaction();
+            if (replace) {
+                await conn.query('UPDATE suppliers SET active = 0, updated_at = NOW() WHERE active = 1');
+            }
             const [existingRows] = await conn.query('SELECT code FROM suppliers WHERE active = 1');
             const existingCodes = new Set(existingRows.map((r) => String(r.code || '').toLowerCase()));
             let imported = 0;
+            let updated = 0;
             let skipped = 0;
             for (const row of validRows) {
                 const code = row.code || row.company.substring(0, 20);
                 if (existingCodes.has(code.toLowerCase())) {
-                    skipped++;
+                    try {
+                        await conn.query(`UPDATE suppliers SET name = ?, company = ?, address = ?, phone = ?, email = ?, fiscal_id = ?, ice = ?, notes = ?, updated_at = NOW()
+               WHERE LOWER(code) = LOWER(?) AND active = 1`, [row.name || row.company || '', row.company || '',
+                            row.address || '', row.phone || '', row.email || '', row.fiscal_id || '',
+                            row.ice || '', row.notes || '', code]);
+                        updated++;
+                    }
+                    catch {
+                        skipped++;
+                    }
                     continue;
                 }
                 try {
@@ -305,12 +319,12 @@ router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.
             await conn.commit();
             res.json({
                 imported,
+                updated,
                 skipped,
-                errors: dataRows.length - imported - skipped,
+                errors: dataRows.length - imported - updated - skipped,
                 total: dataRows.length,
                 colMap: { code: colCode, name: colName, company: colCompany, phone: colPhone, email: colEmail, address: colAddress, fiscal_id: colFiscal, ice: colIce },
                 headers,
-                sampleFirstRow: dataRows.length > 0 ? dataRows[0] : [],
             });
         }
         finally {

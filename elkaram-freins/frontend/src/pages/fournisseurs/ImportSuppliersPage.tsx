@@ -22,6 +22,7 @@ export default function ImportSuppliersPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<ImportRow[]>([]);
   const [importing, setImporting] = useState(false);
+  const [replace, setReplace] = useState(true);
   const [result, setResult] = useState<{ imported: number; errors: number } | null>(null);
   const [error, setError] = useState("");
 
@@ -62,8 +63,11 @@ export default function ImportSuppliersPage() {
     setImporting(true);
     setError("");
     try {
-      const res = await suppliersApi.importExcel(file) as any;
-      setResult({ imported: res.imported, errors: (res.errors || 0) + (res.skipped || 0) });
+      const res = await suppliersApi.importExcel(file, replace) as any;
+      const imported = res.imported || 0;
+      const updated = res.updated || 0;
+      const skipped = res.skipped || 0;
+      setResult({ imported: imported + updated, errors: skipped });
       if (res.headers) {
         const info = [
           `Entêtes: ${res.headers.join(' | ')}`,
@@ -157,10 +161,21 @@ export default function ImportSuppliersPage() {
           )}
 
           {preview.length > 0 && !result && (
-            <Button onClick={handleImport} disabled={importing}>
-              <Upload className="mr-2 h-4 w-4" />
-              {importing ? "Importation..." : "Importer"}
-            </Button>
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={replace}
+                  onChange={(e) => setReplace(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                Désactiver les fournisseurs existants avant import
+              </label>
+              <Button onClick={handleImport} disabled={importing}>
+                <Upload className="mr-2 h-4 w-4" />
+                {importing ? "Importation..." : "Importer"}
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>

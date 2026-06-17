@@ -99,9 +99,10 @@ export const suppliers = {
   updateSupplier: (id: string, data: Partial<Supplier>) =>
     api.put<Supplier>(`/suppliers/${id}`, data).then((r) => r.data),
   deleteSupplier: (id: string) => api.delete(`/suppliers/${id}`).then((r) => r.data),
-  importExcel: (file: File) => {
+  importExcel: (file: File, replace = false) => {
     const fd = new FormData();
     fd.append("file", file);
+    fd.append("replace", String(replace));
     return api.post<ImportResult>("/suppliers/import-excel", fd, { timeout: 120000, headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data);
   },
   exportExcel: () => api.get("/suppliers/export", { responseType: "blob" }).then((r) => r.data),
