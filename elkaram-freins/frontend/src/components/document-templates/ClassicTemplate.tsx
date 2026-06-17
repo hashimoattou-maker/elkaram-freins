@@ -124,46 +124,59 @@ export default function ClassicTemplate({ document, company, design }: ClassicTe
               Qté
             </th>
             <th style={{ padding: "10px", textAlign: "right", border: design.showBorders ? "1px solid #ddd" : "none" }}>
-              Prix HT
+              P.U/HT
             </th>
             <th style={{ padding: "10px", textAlign: "right", border: design.showBorders ? "1px solid #ddd" : "none" }}>
-              Total TTC
+              P.U/TTC
+            </th>
+            <th style={{ padding: "10px", textAlign: "right", border: design.showBorders ? "1px solid #ddd" : "none" }}>
+              Montant TTC
             </th>
           </tr>
         </thead>
         <tbody>
-          {document.lines.map((line, index) => (
-            <tr
-              key={line.id}
-              className="border-gray-200 dark:border-gray-700 print:border-gray-200"
-              style={{
-                borderBottom: "1px solid #eee",
-                backgroundColor: index % 2 === 0 ? "#f9f9f9" : "#fff",
-              }}
-            >
-              <td style={{ padding: "8px", border: design.showBorders ? "1px solid #ddd" : "none" }}>
-                {line.ref || line.product?.reference || "-"}
-              </td>
-              <td style={{ padding: "8px", border: design.showBorders ? "1px solid #ddd" : "none" }}>
-                {line.description}
-              </td>
-              <td style={{ padding: "8px", textAlign: "center", border: design.showBorders ? "1px solid #ddd" : "none" }}>
-                {line.quantity}
-              </td>
-              <td style={{ padding: "8px", textAlign: "right", border: design.showBorders ? "1px solid #ddd" : "none" }}>
-                {formatCurrency(line.unitPrice || 0)}
-              </td>
-              <td style={{ padding: "8px", textAlign: "right", border: design.showBorders ? "1px solid #ddd" : "none" }}>
-                {formatCurrency(line.totalTtc || line.total || 0)}
-              </td>
-            </tr>
-          ))}
+          {document.lines.map((line, index) => {
+            const puHT = line.unitPrice || 0;
+            const taxRate = line.taxRate || 0;
+            const puTTC = puHT * (1 + taxRate / 100);
+            const qty = line.quantity || 0;
+            const montantTTC = puTTC * qty;
+            return (
+              <tr
+                key={line.id}
+                className="border-gray-200 dark:border-gray-700 print:border-gray-200"
+                style={{
+                  borderBottom: "1px solid #eee",
+                  backgroundColor: index % 2 === 0 ? "#f9f9f9" : "#fff",
+                }}
+              >
+                <td style={{ padding: "8px", border: design.showBorders ? "1px solid #ddd" : "none" }}>
+                  {line.ref || line.product?.reference || "-"}
+                </td>
+                <td style={{ padding: "8px", border: design.showBorders ? "1px solid #ddd" : "none" }}>
+                  {line.description}
+                </td>
+                <td style={{ padding: "8px", textAlign: "center", border: design.showBorders ? "1px solid #ddd" : "none" }}>
+                  {line.quantity}
+                </td>
+                <td style={{ padding: "8px", textAlign: "right", border: design.showBorders ? "1px solid #ddd" : "none" }}>
+                  {formatCurrency(puHT)}
+                </td>
+                <td style={{ padding: "8px", textAlign: "right", border: design.showBorders ? "1px solid #ddd" : "none" }}>
+                  {formatCurrency(puTTC)}
+                </td>
+                <td style={{ padding: "8px", textAlign: "right", border: design.showBorders ? "1px solid #ddd" : "none" }}>
+                  {formatCurrency(montantTTC)}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
       <div style={{ textAlign: "right", fontSize: "14px" }}>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: "40px", marginBottom: "5px" }}>
-          <span className="text-gray-600 dark:text-gray-400 print:text-gray-600">Sous-total:</span>
+          <span className="text-gray-600 dark:text-gray-400 print:text-gray-600">HT:</span>
           <span style={{ fontWeight: "bold" }}>{formatCurrency(document.subtotal)}</span>
         </div>
         {document.discount > 0 && (

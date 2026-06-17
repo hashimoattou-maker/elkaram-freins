@@ -100,30 +100,41 @@ export default function ProfessionalTemplate({ document, company, design }: Prof
               Qté
             </th>
             <th style={{ padding: "10px 8px", textAlign: "right", color: design.primaryColor, fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}>
-              Prix HT
+              P.U/HT
             </th>
             <th style={{ padding: "10px 8px", textAlign: "right", color: design.primaryColor, fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}>
-              Total TTC
+              P.U/TTC
+            </th>
+            <th style={{ padding: "10px 8px", textAlign: "right", color: design.primaryColor, fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}>
+              Montant TTC
             </th>
           </tr>
         </thead>
         <tbody>
-          {document.lines.map((line) => (
-            <tr key={line.id} className="border-gray-200 dark:border-gray-700 print:border-gray-200" style={{ borderBottom: "1px solid #eee" }}>
-              <td style={{ padding: "10px 8px" }}>{line.ref || line.product?.reference || "-"}</td>
-              <td style={{ padding: "10px 8px" }}>{line.description}</td>
-              <td style={{ padding: "10px 8px", textAlign: "center" }}>{line.quantity}</td>
-              <td style={{ padding: "10px 8px", textAlign: "right" }}>{formatCurrency(line.unitPrice || 0)}</td>
-              <td style={{ padding: "10px 8px", textAlign: "right", fontWeight: "500" }}>{formatCurrency(line.totalTtc || line.total || 0)}</td>
-            </tr>
-          ))}
+          {document.lines.map((line) => {
+            const puHT = line.unitPrice || 0;
+            const taxRate = line.taxRate || 0;
+            const puTTC = puHT * (1 + taxRate / 100);
+            const qty = line.quantity || 0;
+            const montantTTC = puTTC * qty;
+            return (
+              <tr key={line.id} className="border-gray-200 dark:border-gray-700 print:border-gray-200" style={{ borderBottom: "1px solid #eee" }}>
+                <td style={{ padding: "10px 8px" }}>{line.ref || line.product?.reference || "-"}</td>
+                <td style={{ padding: "10px 8px" }}>{line.description}</td>
+                <td style={{ padding: "10px 8px", textAlign: "center" }}>{line.quantity}</td>
+                <td style={{ padding: "10px 8px", textAlign: "right" }}>{formatCurrency(puHT)}</td>
+                <td style={{ padding: "10px 8px", textAlign: "right" }}>{formatCurrency(puTTC)}</td>
+                <td style={{ padding: "10px 8px", textAlign: "right", fontWeight: "500" }}>{formatCurrency(montantTTC)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <div style={{ width: "280px" }}>
           <div className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "12px", color: "#666" }}>
-            <span>Sous-total:</span>
+            <span>HT:</span>
             <span>{formatCurrency(document.subtotal)}</span>
           </div>
           {document.discount > 0 && (

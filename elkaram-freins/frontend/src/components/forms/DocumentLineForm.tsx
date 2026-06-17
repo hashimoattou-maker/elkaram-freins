@@ -31,8 +31,8 @@ export default function DocumentLineForm({
   taxRate = 20,
 }: DocumentLineFormProps) {
   const totalHt = (line: DocumentLine) => line.quantity * line.unitPrice - (line.discount || 0);
-  const taxAmt = (line: DocumentLine) => totalHt(line) * (taxRate / 100);
-  const totalTtc = (line: DocumentLine) => totalHt(line) + taxAmt(line);
+  const puTTC = (line: DocumentLine) => line.unitPrice * (1 + taxRate / 100);
+  const montantTTC = (line: DocumentLine) => puTTC(line) * line.quantity;
 
   return (
     <div className="space-y-4">
@@ -43,18 +43,16 @@ export default function DocumentLineForm({
               <TableHead>Réf</TableHead>
               <TableHead className="w-[25%]">Article</TableHead>
               <TableHead>Qté</TableHead>
-              <TableHead>Prix HT</TableHead>
-              <TableHead>Prix Unit.</TableHead>
-              <TableHead>Total TTC</TableHead>
-              <TableHead>TVA %</TableHead>
-              <TableHead>Mt TVA</TableHead>
+              <TableHead>P.U/HT</TableHead>
+              <TableHead>P.U/TTC</TableHead>
+              <TableHead>Montant TTC</TableHead>
               {!readOnly && <TableHead className="w-[50px]"></TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {lines.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={readOnly ? 8 : 9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={readOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">
                   Aucune ligne
                 </TableCell>
               </TableRow>
@@ -96,7 +94,6 @@ export default function DocumentLineForm({
                       />
                     )}
                   </TableCell>
-                  <TableCell className="font-medium">{formatCurrency(totalHt(line))}</TableCell>
                   <TableCell>
                     {readOnly ? (
                       formatCurrency(line.unitPrice)
@@ -110,9 +107,8 @@ export default function DocumentLineForm({
                       />
                     )}
                   </TableCell>
-                  <TableCell className="font-medium">{formatCurrency(totalTtc(line))}</TableCell>
-                  <TableCell>{taxRate}%</TableCell>
-                  <TableCell className="font-medium">{formatCurrency(taxAmt(line))}</TableCell>
+                  <TableCell className="font-medium">{formatCurrency(puTTC(line))}</TableCell>
+                  <TableCell className="font-medium">{formatCurrency(montantTTC(line))}</TableCell>
                   {!readOnly && (
                     <TableCell>
                       <Button

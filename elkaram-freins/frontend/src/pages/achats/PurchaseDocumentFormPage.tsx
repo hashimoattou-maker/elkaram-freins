@@ -334,12 +334,10 @@ export default function PurchaseDocumentFormPage() {
                     <TableHead className="w-16">Réf</TableHead>
                     <TableHead>Article</TableHead>
                     <TableHead className="w-16">Qté</TableHead>
-                    <TableHead className="w-24">Prix Unit.</TableHead>
+                    <TableHead className="w-24">P.U/HT</TableHead>
                     <TableHead className="w-24">Remise</TableHead>
-                    <TableHead className="w-24">Total HT</TableHead>
-                    <TableHead className="w-16">TVA %</TableHead>
-                    <TableHead className="w-24">Mt TVA</TableHead>
-                    <TableHead className="w-24">Total TTC</TableHead>
+                    <TableHead className="w-24">P.U/TTC</TableHead>
+                    <TableHead className="w-24">Montant TTC</TableHead>
                     <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -347,6 +345,8 @@ export default function PurchaseDocumentFormPage() {
                   {lines.map((line, index) => {
                     const ht = line.quantity * line.unitPrice - (line.discount || 0);
                     const tva = Number(form.taxRate);
+                    const puHT = line.unitPrice - ((line.discount || 0) / (line.quantity || 1));
+                    const puTTC = puHT * (1 + tva / 100);
                     const mtTva = ht * (tva / 100);
                     const ttc = ht + mtTva;
                     return (
@@ -366,9 +366,7 @@ export default function PurchaseDocumentFormPage() {
                         <TableCell>
                           <Input type="number" step="0.01" value={line.discount || 0} onChange={(e) => updateLine(index, "discount", Number(e.target.value))} className="w-24" />
                         </TableCell>
-                        <TableCell className="font-medium text-xs">{formatCurrency(ht)}</TableCell>
-                        <TableCell className="text-xs">{tva}%</TableCell>
-                        <TableCell className="font-medium text-xs">{formatCurrency(mtTva)}</TableCell>
+                        <TableCell className="font-medium text-xs">{formatCurrency(puTTC)}</TableCell>
                         <TableCell className="font-medium text-xs">{formatCurrency(ttc)}</TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" className="text-red-600 h-8 w-8" onClick={() => removeLine(index)}>
@@ -401,7 +399,7 @@ export default function PurchaseDocumentFormPage() {
 
             <div className="border-t pt-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Sous-total</span>
+                <span>HT</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">

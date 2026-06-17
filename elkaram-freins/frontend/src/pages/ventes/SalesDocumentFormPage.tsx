@@ -322,20 +322,19 @@ export default function SalesDocumentFormPage() {
                     <TableHead className="w-16">Réf</TableHead>
                     <TableHead>Article</TableHead>
                     <TableHead className="w-16">Qté</TableHead>
-                    <TableHead className="w-24">Prix HT</TableHead>
-                    <TableHead className="w-24">Prix Unit.</TableHead>
-                    <TableHead className="w-24">Total TTC</TableHead>
-                    <TableHead className="w-16">TVA %</TableHead>
-                    <TableHead className="w-24">Mt TVA</TableHead>
+                    <TableHead className="w-24">P.U/HT</TableHead>
+                    <TableHead className="w-24">P.U/TTC</TableHead>
+                    <TableHead className="w-24">Montant TTC</TableHead>
                     <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {lines.map((line, index) => {
-                    const ht = line.quantity * line.unitPrice - (line.discount || 0);
+                    const puHT = line.unitPrice;
                     const tva = Number(form.taxRate);
-                    const mtTva = ht * (tva / 100);
-                    const ttc = ht + mtTva;
+                    const puTTC = puHT * (1 + tva / 100);
+                    const qty = line.quantity;
+                    const montantTTC = puTTC * qty;
                     return (
                       <TableRow key={line.id}>
                         <TableCell>
@@ -347,13 +346,11 @@ export default function SalesDocumentFormPage() {
                         <TableCell>
                           <Input type="number" value={line.quantity} onChange={(e) => updateLine(index, "quantity", Number(e.target.value))} className="w-16" />
                         </TableCell>
-                        <TableCell className="font-medium text-xs">{formatCurrency(ht)}</TableCell>
                         <TableCell>
                           <Input type="number" step="0.01" value={line.unitPrice} onChange={(e) => updateLine(index, "unitPrice", Number(e.target.value))} className="w-24" />
                         </TableCell>
-                        <TableCell className="font-medium text-xs">{formatCurrency(ttc)}</TableCell>
-                        <TableCell className="text-xs">{tva}%</TableCell>
-                        <TableCell className="font-medium text-xs">{formatCurrency(mtTva)}</TableCell>
+                        <TableCell className="font-medium text-xs">{formatCurrency(puTTC)}</TableCell>
+                        <TableCell className="font-medium text-xs">{formatCurrency(montantTTC)}</TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" className="text-red-600 h-8 w-8" onClick={() => removeLine(index)}>
                             <Trash2 className="h-4 w-4" />
@@ -379,7 +376,7 @@ export default function SalesDocumentFormPage() {
 
             <div className="border-t pt-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Sous-total</span>
+                <span>HT</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">

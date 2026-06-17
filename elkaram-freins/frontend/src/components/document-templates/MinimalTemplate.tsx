@@ -61,27 +61,36 @@ export default function MinimalTemplate({ document, company, design }: MinimalTe
             <th style={{ padding: "8px 5px", textAlign: "left", fontWeight: "400", color: "#999", fontSize: "11px" }}>Référence</th>
             <th style={{ padding: "8px 5px", textAlign: "left", fontWeight: "400", color: "#999", fontSize: "11px" }}>Désignation</th>
             <th style={{ padding: "8px 5px", textAlign: "center", fontWeight: "400", color: "#999", fontSize: "11px" }}>Qté</th>
-            <th style={{ padding: "8px 5px", textAlign: "right", fontWeight: "400", color: "#999", fontSize: "11px" }}>Prix HT</th>
-            <th style={{ padding: "8px 5px", textAlign: "right", fontWeight: "400", color: "#999", fontSize: "11px" }}>Total TTC</th>
+            <th style={{ padding: "8px 5px", textAlign: "right", fontWeight: "400", color: "#999", fontSize: "11px" }}>P.U/HT</th>
+            <th style={{ padding: "8px 5px", textAlign: "right", fontWeight: "400", color: "#999", fontSize: "11px" }}>P.U/TTC</th>
+            <th style={{ padding: "8px 5px", textAlign: "right", fontWeight: "400", color: "#999", fontSize: "11px" }}>Montant TTC</th>
           </tr>
         </thead>
         <tbody>
-          {document.lines.map((line) => (
-            <tr key={line.id} className="border-gray-200 dark:border-gray-700 print:border-gray-200" style={{ borderBottom: "1px solid #f0f0f0" }}>
-              <td style={{ padding: "8px 5px" }}>{line.ref || line.product?.reference || "-"}</td>
-              <td style={{ padding: "8px 5px" }}>{line.description}</td>
-              <td className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ padding: "8px 5px", textAlign: "center", color: "#666" }}>{line.quantity}</td>
-              <td className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ padding: "8px 5px", textAlign: "right", color: "#666" }}>{formatCurrency(line.unitPrice || 0)}</td>
-              <td style={{ padding: "8px 5px", textAlign: "right" }}>{formatCurrency(line.totalTtc || line.total || 0)}</td>
-            </tr>
-          ))}
+          {document.lines.map((line) => {
+            const puHT = line.unitPrice || 0;
+            const taxRate = line.taxRate || 0;
+            const puTTC = puHT * (1 + taxRate / 100);
+            const qty = line.quantity || 0;
+            const montantTTC = puTTC * qty;
+            return (
+              <tr key={line.id} className="border-gray-200 dark:border-gray-700 print:border-gray-200" style={{ borderBottom: "1px solid #f0f0f0" }}>
+                <td style={{ padding: "8px 5px" }}>{line.ref || line.product?.reference || "-"}</td>
+                <td style={{ padding: "8px 5px" }}>{line.description}</td>
+                <td className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ padding: "8px 5px", textAlign: "center", color: "#666" }}>{line.quantity}</td>
+                <td className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ padding: "8px 5px", textAlign: "right", color: "#666" }}>{formatCurrency(puHT)}</td>
+                <td className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ padding: "8px 5px", textAlign: "right", color: "#666" }}>{formatCurrency(puTTC)}</td>
+                <td style={{ padding: "8px 5px", textAlign: "right" }}>{formatCurrency(montantTTC)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <div style={{ width: "250px" }}>
           <div className="text-gray-600 dark:text-gray-400 print:text-gray-600" style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "12px", color: "#888" }}>
-            <span>Sous-total</span>
+            <span>HT</span>
             <span>{formatCurrency(document.subtotal)}</span>
           </div>
           {document.discount > 0 && (
