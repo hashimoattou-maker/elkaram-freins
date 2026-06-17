@@ -22,7 +22,6 @@ export default function ImportSuppliersPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<ImportRow[]>([]);
   const [importing, setImporting] = useState(false);
-  const [replace, setReplace] = useState(true);
   const [result, setResult] = useState<{ imported: number; errors: number } | null>(null);
   const [error, setError] = useState("");
 
@@ -63,18 +62,10 @@ export default function ImportSuppliersPage() {
     setImporting(true);
     setError("");
     try {
-      const res = await suppliersApi.importExcel(file, replace) as any;
-      const imported = res.imported || 0;
-      const updated = res.updated || 0;
-      const skipped = res.skipped || 0;
-      setResult({ imported: imported + updated, errors: skipped });
+      const res = await suppliersApi.importExcel(file) as any;
+      setResult({ imported: res.imported || 0, errors: res.skipped || 0 });
       if (res.headers) {
-        const info = [
-          `Entêtes: ${res.headers.join(' | ')}`,
-          `Total: ${res.total} | Importés: ${res.imported} | Ignorés: ${res.skipped}`,
-          res.colMap ? `Colonnes trouvées: code=${res.colMap.code}, nom=${res.colMap.name}, société=${res.colMap.company}, tél=${res.colMap.phone}` : '',
-        ].filter(Boolean).join('\n');
-        setError(info);
+        setError(`Entêtes: ${res.headers.join(' | ')}\nTotal: ${res.total} | Importés: ${res.imported} | Ignorés: ${res.skipped}`);
       }
     } catch (err: any) {
       const msg = err?.response?.data?.error || "Erreur lors de l'importation";
@@ -161,21 +152,10 @@ export default function ImportSuppliersPage() {
           )}
 
           {preview.length > 0 && !result && (
-            <div className="space-y-3">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={replace}
-                  onChange={(e) => setReplace(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                Désactiver les fournisseurs existants avant import
-              </label>
-              <Button onClick={handleImport} disabled={importing}>
-                <Upload className="mr-2 h-4 w-4" />
-                {importing ? "Importation..." : "Importer"}
-              </Button>
-            </div>
+            <Button onClick={handleImport} disabled={importing}>
+              <Upload className="mr-2 h-4 w-4" />
+              {importing ? "Importation..." : "Importer"}
+            </Button>
           )}
         </CardContent>
       </Card>
