@@ -63,10 +63,14 @@ export default function ImportSuppliersPage() {
     setError("");
     try {
       const res = await suppliersApi.importExcel(file) as any;
-      setResult({ imported: res.imported, errors: res.errors });
-      if (res.debug || res.rawKeys) {
-        const cols = res.debug || res.rawKeys;
-        setError(`Colonnes Excel détectées: ${cols ? cols.join(', ') : 'aucune'}`);
+      setResult({ imported: res.imported, errors: (res.errors || 0) + (res.skipped || 0) });
+      if (res.headers) {
+        const info = [
+          `Entêtes: ${res.headers.join(' | ')}`,
+          `Total: ${res.total} | Importés: ${res.imported} | Ignorés: ${res.skipped}`,
+          res.colMap ? `Colonnes trouvées: code=${res.colMap.code}, nom=${res.colMap.name}, société=${res.colMap.company}, tél=${res.colMap.phone}` : '',
+        ].filter(Boolean).join('\n');
+        setError(info);
       }
     } catch (err: any) {
       const msg = err?.response?.data?.error || "Erreur lors de l'importation";
@@ -104,9 +108,9 @@ export default function ImportSuppliersPage() {
           </p>
 
           {error && (
-            <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-md">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-sm">{error}</span>
+            <div className="flex items-start gap-2 text-blue-700 bg-blue-50 p-3 rounded-md">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span className="text-sm whitespace-pre-line">{error}</span>
             </div>
           )}
 

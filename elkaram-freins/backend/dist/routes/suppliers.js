@@ -235,7 +235,6 @@ router.delete('/:id', (0, auth_1.requireRole)('admin'), async (req, res) => {
     }
 });
 router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.upload.single('file'), async (req, res) => {
-    const conn = await database_1.default.getConnection();
     try {
         if (!req.file) {
             res.status(400).json({ error: 'Fichier requis' });
@@ -243,57 +242,83 @@ router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.
         }
         const wb = XLSX.read(req.file.buffer);
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
-        const rawKeys = data.length > 0 ? Object.keys(data[0]) : [];
-        const mapped = data.map((row) => {
-            const get = (def, ...candidates) => {
-                for (const c of candidates) {
-                    if (row[c] !== undefined && row[c] !== null && row[c] !== '')
-                        return String(row[c]);
-                }
-                return def;
-            };
-            return {
-                code: get('', 'code', 'Code', 'CODE'),
-                name: get('', 'name', 'Name', 'Nom', 'nom'),
-                company: get('', 'company', 'Company', 'Société', 'societe', 'Societe', 'SOCIETE', 'society'),
-                address: get('', 'address', 'Address', 'Adresse', 'adresse'),
-                phone: get('', 'phone', 'Phone', 'Téléphone', 'telephone', 'Tel', 'tel'),
-                email: get('', 'email', 'Email'),
-                fiscal_id: get('', 'fiscal_id', 'Fiscal ID', 'N° fiscal'),
-                ice: get('', 'ice', 'ICE', 'N° ICE'),
-                notes: get('', 'notes', 'Notes', 'Remarques'),
-            };
-        });
-        const validRows = mapped.filter((row) => row.code && (row.name || row.company));
-        const errors = data.length - validRows.length;
-        if (validRows.length === 0) {
-            res.json({ imported: 0, errors, total: data.length, rawKeys, debug: data.length > 0 ? Object.keys(data[0]) : [] });
+        const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        if (raw.length < 2) {
+            res.status(400).json({ error: 'Le fichier est vide ou ne contient qu\'une en-tête' });
             return;
         }
-        const [existingRows] = await conn.query('SELECT code FROM suppliers');
-        const existingCodes = new Set(existingRows.map((r) => String(r.code)));
-        const toInsert = validRows.filter((r) => !existingCodes.has(String(r.code)));
-        await conn.beginTransaction();
-        let imported = 0;
-        for (const row of toInsert) {
-            try {
-                await conn.query(`INSERT INTO suppliers (id, code, name, company, address, phone, email, fiscal_id, ice, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [(0, helpers_1.generateId)(), String(row.code), row.name || row.company || '', row.company || '',
-                    row.address || '', row.phone || '', row.email || '', row.fiscal_id || '',
-                    row.ice || '', row.notes || '']);
-                imported++;
+        const headers = raw[0].map((h) => String(h).trim());
+        const dataRows = raw.slice(1);
+        const findCol = (candidates) => {
+            for (const c of candidates) {
+                const idx = headers.findIndex((h) => h.toLowerCase() === c.toLowerCase());
+                if (idx !== -1)
+                    return idx;
             }
-            catch { /* skip */ }
+            return -1;
+        };
+        const colCode = findCol(['code', 'Code', 'CODE']);
+        const colName = findCol(['name', 'Name', 'Nom', 'nom']);
+        const colCompany = findCol(['company', 'Company', 'Société', 'societe', 'Societe', 'SOCIETE', 'society']);
+        const colPhone = findCol(['phone', 'Phone', 'Téléphone', 'telephone', 'Tel', 'tel']);
+        const colEmail = findCol(['email', 'Email']);
+        const colAddress = findCol(['address', 'Address', 'Adresse', 'adresse']);
+        const colFiscal = findCol(['fiscal_id', 'Fiscal ID', 'N° fiscal', 'fiscal']);
+        const colIce = findCol(['ice', 'ICE', 'N° ICE']);
+        const colNotes = findCol(['notes', 'Notes', 'Remarques']);
+        const mapped = dataRows.map((row) => ({
+            code: colCode !== -1 ? String(row[colCode] || '').trim() : '',
+            name: colName !== -1 ? String(row[colName] || '').trim() : '',
+            company: colCompany !== -1 ? String(row[colCompany] || '').trim() : '',
+            phone: colPhone !== -1 ? String(row[colPhone] || '').trim() : '',
+            email: colEmail !== -1 ? String(row[colEmail] || '').trim() : '',
+            address: colAddress !== -1 ? String(row[colAddress] || '').trim() : '',
+            fiscal_id: colFiscal !== -1 ? String(row[colFiscal] || '').trim() : '',
+            ice: colIce !== -1 ? String(row[colIce] || '').trim() : '',
+            notes: colNotes !== -1 ? String(row[colNotes] || '').trim() : '',
+        }));
+        const validRows = mapped.filter((row) => row.code || row.company);
+        const conn = await database_1.default.getConnection();
+        try {
+            await conn.beginTransaction();
+            const [existingRows] = await conn.query('SELECT code FROM suppliers WHERE active = 1');
+            const existingCodes = new Set(existingRows.map((r) => String(r.code || '').toLowerCase()));
+            let imported = 0;
+            let skipped = 0;
+            for (const row of validRows) {
+                const code = row.code || row.company.substring(0, 20);
+                if (existingCodes.has(code.toLowerCase())) {
+                    skipped++;
+                    continue;
+                }
+                try {
+                    await conn.query(`INSERT INTO suppliers (id, code, name, company, address, phone, email, fiscal_id, ice, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [(0, helpers_1.generateId)(), code, row.name || row.company || '', row.company || '',
+                        row.address || '', row.phone || '', row.email || '', row.fiscal_id || '',
+                        row.ice || '', row.notes || '']);
+                    existingCodes.add(code.toLowerCase());
+                    imported++;
+                }
+                catch {
+                    skipped++;
+                }
+            }
+            await conn.commit();
+            res.json({
+                imported,
+                skipped,
+                errors: dataRows.length - imported - skipped,
+                total: dataRows.length,
+                colMap: { code: colCode, name: colName, company: colCompany, phone: colPhone, email: colEmail, address: colAddress, fiscal_id: colFiscal, ice: colIce },
+                headers,
+                sampleFirstRow: dataRows.length > 0 ? dataRows[0] : [],
+            });
         }
-        await conn.commit();
-        res.json({ imported, errors: errors + (toInsert.length - imported), total: data.length });
+        finally {
+            conn.release();
+        }
     }
     catch (err) {
-        await conn.rollback();
-        res.status(500).json({ error: 'Erreur lors de l\'importation' });
-    }
-    finally {
-        conn.release();
+        res.status(500).json({ error: 'Erreur lors de l\'importation: ' + (err.message || String(err)) });
     }
 });
 exports.default = router;
