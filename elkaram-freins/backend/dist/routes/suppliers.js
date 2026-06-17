@@ -244,22 +244,32 @@ router.post('/import-excel', (0, auth_1.requireRole)('admin', 'user'), upload_1.
         const wb = XLSX.read(req.file.buffer);
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws, { raw: false });
+        const rawKeys = data.length > 0 ? Object.keys(data[0]) : [];
+        const findKey = (row, candidates) => {
+            const keys = Object.keys(row);
+            for (const c of candidates) {
+                const found = keys.find((k) => k.toLowerCase().trim() === c.toLowerCase());
+                if (found && row[found])
+                    return row[found];
+            }
+            return '';
+        };
         const mapKeys = (row) => ({
-            code: row.code || row.Code || row.CODE || '',
-            name: row.name || row.Name || row.Nom || row.nom || '',
-            company: row.company || row.Company || row.Société || row.societe || row['Societe'] || row.society || '',
-            address: row.address || row.Address || row.Adresse || row.adresse || '',
-            phone: row.phone || row.Phone || row.Téléphone || row.telephone || row.Tel || row.tel || '',
-            email: row.email || row.Email || '',
-            fiscal_id: row.fiscal_id || row['Fiscal ID'] || row['N° fiscal'] || '',
-            ice: row.ice || row.ICE || row['N° ICE'] || '',
-            notes: row.notes || row.Notes || row.Remarques || '',
+            code: findKey(row, ['code', 'Code', 'CODE']),
+            name: findKey(row, ['name', 'Name', 'Nom', 'nom']),
+            company: findKey(row, ['company', 'Company', 'Société', 'societe', 'Societe', 'SOCIETE', 'society']),
+            address: findKey(row, ['address', 'Address', 'Adresse', 'adresse']),
+            phone: findKey(row, ['phone', 'Phone', 'Téléphone', 'telephone', 'Tel', 'tel']),
+            email: findKey(row, ['email', 'Email']),
+            fiscal_id: findKey(row, ['fiscal_id', 'Fiscal ID', 'N° fiscal']),
+            ice: findKey(row, ['ice', 'ICE', 'N° ICE']),
+            notes: findKey(row, ['notes', 'Notes', 'Remarques']),
         });
         const mapped = data.map(mapKeys);
         const validRows = mapped.filter((row) => row.code && (row.name || row.company));
         const errors = data.length - validRows.length;
         if (validRows.length === 0) {
-            res.json({ imported: 0, errors, total: data.length });
+            res.json({ imported: 0, errors, total: data.length, rawKeys });
             return;
         }
         const [existingRows] = await conn.query('SELECT code FROM suppliers');

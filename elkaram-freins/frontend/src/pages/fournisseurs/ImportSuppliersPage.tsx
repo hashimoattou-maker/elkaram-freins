@@ -62,8 +62,11 @@ export default function ImportSuppliersPage() {
     setImporting(true);
     setError("");
     try {
-      const res = await suppliersApi.importExcel(file);
+      const res = await suppliersApi.importExcel(file) as any;
       setResult({ imported: res.imported, errors: res.errors });
+      if (res.rawKeys && res.rawKeys.length > 0) {
+        setError(`Colonnes détectées: ${res.rawKeys.join(', ')}`);
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.error || "Erreur lors de l'importation";
       setError(msg);
