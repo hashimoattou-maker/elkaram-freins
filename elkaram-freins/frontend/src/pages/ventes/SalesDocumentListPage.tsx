@@ -126,6 +126,21 @@ export default function SalesDocumentListPage() {
     navigate(`${basePath}/${id}`);
   };
 
+  function getPaymentStatus(doc: Document) {
+    const paid = doc.paidAmount || 0;
+    const total = doc.total || 0;
+    if (paid <= 0) return "Non réglé";
+    if (paid >= total - 0.01) return "Réglé";
+    return "Partiel";
+  }
+
+  function getPaymentStatusStyle(doc: Document) {
+    const status = getPaymentStatus(doc);
+    if (status === "Réglé") return "bg-green-100 text-green-700 border border-green-300";
+    if (status === "Partiel") return "bg-yellow-100 text-yellow-700 border border-yellow-300";
+    return "bg-red-100 text-red-700 border border-red-300";
+  }
+
   if (!docType) return null;
 
   return (
@@ -171,21 +186,24 @@ export default function SalesDocumentListPage() {
                   <TableHead>N° Document</TableHead>
                   <TableHead>Client</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Total</TableHead>
                   <TableHead>Statut</TableHead>
+                  <TableHead>Mode de paiement</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Total réglé</TableHead>
+                  <TableHead>Reste</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <div className="animate-spin h-6 w-6 border-4 border-primary border-t-transparent rounded-full mx-auto" />
                     </TableCell>
                   </TableRow>
                 ) : docList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       Aucun document trouvé
                     </TableCell>
                   </TableRow>
@@ -195,11 +213,16 @@ export default function SalesDocumentListPage() {
                       <TableCell className="font-medium">{doc.docNumber}</TableCell>
                       <TableCell>{doc.client?.name || "-"}</TableCell>
                       <TableCell>{formatDate(doc.date)}</TableCell>
-                      <TableCell>{formatCurrency(doc.total)}</TableCell>
                       <TableCell>
-                        <Badge variant={getStatusBadge(doc.status) as "default" | "secondary" | "destructive" | "outline" | "success" | "warning"}>
-                          {doc.status}
-                        </Badge>
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getPaymentStatusStyle(doc)}`}>
+                          {getPaymentStatus(doc)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs">{doc.lastPaymentMethod || "-"}</TableCell>
+                      <TableCell>{formatCurrency(doc.total)}</TableCell>
+                      <TableCell className="text-green-600">{formatCurrency(doc.paidAmount || 0)}</TableCell>
+                      <TableCell className={doc.total - (doc.paidAmount || 0) > 0 ? "text-red-600 font-medium" : ""}>
+                        {formatCurrency(Math.max(0, doc.total - (doc.paidAmount || 0)))}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">

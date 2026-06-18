@@ -83,6 +83,7 @@ export interface Document {
   shipping: number;
   total: number;
   paidAmount: number;
+  lastPaymentMethod?: string;
   notes?: string;
   terms?: string;
   createdBy?: string;

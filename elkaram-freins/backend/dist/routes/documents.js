@@ -74,6 +74,7 @@ function mapDoc(d) {
         createdBy: d.created_by,
         createdByName: d.created_by_name,
         validatedBy: d.validated_by,
+        lastPaymentMethod: d.last_payment_method || '',
         createdAt: d.created_at,
         updatedAt: d.updated_at,
     };
@@ -158,11 +159,15 @@ router.get('/', async (req, res) => {
         }
         const [countRows] = await database_1.default.execute(`SELECT COUNT(*) as count FROM documents d ${where}`, params);
         const [documents] = await database_1.default.execute(`
-      SELECT d.*, c.name as client_name, s.name as supplier_name, u.full_name as created_by_name
+      SELECT d.*, c.name as client_name, s.name as supplier_name, u.full_name as created_by_name,
+             p.payment_method as last_payment_method
       FROM documents d
       LEFT JOIN clients c ON c.id = d.client_id
       LEFT JOIN suppliers s ON s.id = d.supplier_id
       LEFT JOIN users u ON u.id = d.created_by
+      LEFT JOIN payments p ON p.document_id = d.id AND p.created_at = (
+        SELECT MAX(p2.created_at) FROM payments p2 WHERE p2.document_id = d.id
+      )
       ${where}
       ORDER BY d.created_at DESC
       LIMIT ${limitNum} OFFSET ${offset}
