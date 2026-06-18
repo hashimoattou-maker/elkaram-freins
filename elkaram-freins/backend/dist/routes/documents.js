@@ -407,10 +407,6 @@ router.post('/:id/validate', (0, auth_1.requireRole)('admin', 'user'), async (re
         }
         const doc = docRows[0];
         const wasAlreadyConfirmed = doc.status === 'confirmé';
-        if (doc.status === 'annulé' || doc.status === 'converti') {
-            res.status(400).json({ error: 'Ce document ne peut plus être validé' });
-            return;
-        }
         const [lines] = await conn.execute('SELECT * FROM document_lines WHERE document_id = ?', [id]);
         const saleDocs = ['facture_vente', 'bon_livraison', 'commande_client', 'avoir_achat'];
         const purchaseDocs = ['bon_achat', 'facture_achat', 'bon_commande', 'avoir_vente'];

@@ -407,10 +407,6 @@ router.post('/:id/validate', requireRole('admin', 'user'), async (req: AuthReque
     }
     const doc = docRows[0];
     const wasAlreadyConfirmed = doc.status === 'confirmé';
-    if (doc.status === 'annulé' || doc.status === 'converti') {
-      res.status(400).json({ error: 'Ce document ne peut plus être validé' });
-      return;
-    }
 
     const [lines] = await conn.execute('SELECT * FROM document_lines WHERE document_id = ?', [id]) as any;
 
