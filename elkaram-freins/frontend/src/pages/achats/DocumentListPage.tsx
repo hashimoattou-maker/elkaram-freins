@@ -208,18 +208,16 @@ export default function PurchaseDocumentListPage() {
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleView(doc.id)} title="Télécharger PDF">
                             <FileDown className="h-5 w-5" />
                           </Button>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => navigate(`${basePath}/${doc.id}/edit`)} title="Modifier">
+                            <Edit className="h-5 w-5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700" onClick={() => setDeleteId(doc.id)} title="Supprimer">
+                            <Trash2 className="h-5 w-5" />
+                          </Button>
                           {doc.status === "brouillon" && (
-                            <>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => navigate(`${basePath}/${doc.id}/edit`)} title="Modifier">
-                                <Edit className="h-5 w-5" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-green-600 hover:text-green-700" onClick={() => handleValidate(doc.id)} title="Valider">
-                                <CheckCircle className="h-5 w-5" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700" onClick={() => setDeleteId(doc.id)} title="Supprimer">
-                                <Trash2 className="h-5 w-5" />
-                              </Button>
-                            </>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-green-600 hover:text-green-700" onClick={() => handleValidate(doc.id)} title="Valider">
+                              <CheckCircle className="h-5 w-5" />
+                            </Button>
                           )}
                           {doc.status === "confirmé" && (
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleConvert(doc)} title="Convertir">
