@@ -379,6 +379,8 @@ router.delete('/:id', requireRole('admin', 'user'), async (req: AuthRequest, res
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
+      await conn.execute('UPDATE documents SET converted_from_id = NULL WHERE converted_from_id = ?', [id]);
+      await conn.execute('UPDATE documents SET converted_to_id = NULL WHERE converted_to_id = ?', [id]);
       await conn.execute('DELETE FROM stock_movements WHERE document_id = ?', [id]);
       await conn.execute('DELETE FROM document_lines WHERE document_id = ?', [id]);
       await conn.execute('DELETE FROM documents WHERE id = ?', [id]);
