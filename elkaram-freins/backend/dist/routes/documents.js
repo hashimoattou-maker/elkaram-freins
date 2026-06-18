@@ -293,9 +293,9 @@ router.put('/:id', (0, auth_1.requireRole)('admin', 'user'), async (req, res) =>
             const finalTotal = taxable + taxAmount + (shipping || 0);
             await conn.beginTransaction();
             await conn.execute(`
-        UPDATE documents SET date = ?, due_date = ?, client_id = ?, supplier_id = ?, subtotal = ?, tax_rate = ?, tax_amount = ?, discount_percent = ?, discount_amount = ?, shipping_cost = ?, total = ?, notes = ?, terms_conditions = ?, design_id = ?, updated_at = NOW()
+        UPDATE documents SET date = ?, due_date = ?, client_id = ?, supplier_id = ?, matricule = ?, subtotal = ?, tax_rate = ?, tax_amount = ?, discount_percent = ?, discount_amount = ?, shipping_cost = ?, total = ?, notes = ?, terms_conditions = ?, design_id = ?, updated_at = NOW()
         WHERE id = ?
-      `, [date || existing.date, dueDate || null, clientId || null, supplierId || null,
+      `, [date || existing.date, dueDate || null, clientId || null, supplierId || null, matricule || '',
                 computed.subtotal, taxRate || 0, Math.round(taxAmount * 100) / 100, discountPercent, discountAmount,
                 shipping || 0, Math.round(finalTotal * 100) / 100, notes || '', terms || '', designId || null, id
             ]);
@@ -406,8 +406,9 @@ router.post('/:id/validate', (0, auth_1.requireRole)('admin', 'user'), async (re
             return;
         }
         const doc = docRows[0];
-        if (doc.status !== 'brouillon') {
-            res.status(400).json({ error: 'Seuls les documents en brouillon peuvent être validés' });
+        const wasAlreadyConfirmed = doc.status === 'confirmé';
+        if (doc.status === 'annulé' || doc.status === 'converti') {
+            res.status(400).json({ error: 'Ce document ne peut plus être validé' });
             return;
         }
         const [lines] = await conn.execute('SELECT * FROM document_lines WHERE document_id = ?', [id]);
@@ -426,12 +427,16 @@ router.post('/:id/validate', (0, auth_1.requireRole)('admin', 'user'), async (re
         await conn.beginTransaction();
         await conn.execute("UPDATE documents SET status = 'confirmé', validated_by = ?, updated_at = NOW() WHERE id = ?", [req.user.id, id]);
         doc.validated_by = req.user.id;
-        for (const line of lines) {
-            if (!line.product_id)
-                continue;
-            const qty = movementType === 'sortie' ? -line.quantity : line.quantity;
-            await conn.execute("UPDATE products SET stock = stock + ?, updated_at = NOW() WHERE id = ?", [qty, line.product_id]);
-            await conn.execute(`INSERT INTO stock_movements (id, product_id, document_id, movement_type, quantity, unit_price, reference, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [(0, helpers_1.generateId)(), line.product_id, doc.id, movementType === 'entrée' ? 'entrée' : 'sortie', line.quantity, line.unit_price, doc.doc_number, `Document: ${doc.doc_number}`, req.user.id]);
+        const [existingMovements] = await conn.execute('SELECT COUNT(*) as cnt FROM stock_movements WHERE document_id = ?', [id]);
+        const hasStockMovements = existingMovements[0].cnt > 0;
+        if (!hasStockMovements) {
+            for (const line of lines) {
+                if (!line.product_id)
+                    continue;
+                const qty = movementType === 'sortie' ? -line.quantity : line.quantity;
+                await conn.execute("UPDATE products SET stock = stock + ?, updated_at = NOW() WHERE id = ?", [qty, line.product_id]);
+                await conn.execute(`INSERT INTO stock_movements (id, product_id, document_id, movement_type, quantity, unit_price, reference, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [(0, helpers_1.generateId)(), line.product_id, doc.id, movementType === 'entrée' ? 'entrée' : 'sortie', line.quantity, line.unit_price, doc.doc_number, `Document: ${doc.doc_number}`, req.user.id]);
+            }
         }
         if (doc.client_id) {
             const [balRows] = await conn.execute("SELECT COALESCE(SUM(total - COALESCE(paid_amount, 0)), 0) as bal FROM documents WHERE client_id = ? AND status = 'confirmé'", [doc.client_id]);

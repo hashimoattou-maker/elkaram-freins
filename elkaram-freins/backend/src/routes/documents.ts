@@ -311,9 +311,9 @@ router.put('/:id', requireRole('admin', 'user'), async (req: AuthRequest, res: R
       await conn.beginTransaction();
 
       await conn.execute(`
-        UPDATE documents SET date = ?, due_date = ?, client_id = ?, supplier_id = ?, subtotal = ?, tax_rate = ?, tax_amount = ?, discount_percent = ?, discount_amount = ?, shipping_cost = ?, total = ?, notes = ?, terms_conditions = ?, design_id = ?, updated_at = NOW()
+        UPDATE documents SET date = ?, due_date = ?, client_id = ?, supplier_id = ?, matricule = ?, subtotal = ?, tax_rate = ?, tax_amount = ?, discount_percent = ?, discount_amount = ?, shipping_cost = ?, total = ?, notes = ?, terms_conditions = ?, design_id = ?, updated_at = NOW()
         WHERE id = ?
-      `, [date || existing.date, dueDate || null, clientId || null, supplierId || null,
+      `, [date || existing.date, dueDate || null, clientId || null, supplierId || null, matricule || '',
         computed.subtotal, taxRate || 0, Math.round(taxAmount * 100) / 100, discountPercent, discountAmount,
         shipping || 0, Math.round(finalTotal * 100) / 100, notes || '', terms || '', designId || null, id
       ]);
@@ -406,8 +406,9 @@ router.post('/:id/validate', requireRole('admin', 'user'), async (req: AuthReque
       return;
     }
     const doc = docRows[0];
-    if (doc.status !== 'brouillon') {
-      res.status(400).json({ error: 'Seuls les documents en brouillon peuvent être validés' });
+    const wasAlreadyConfirmed = doc.status === 'confirmé';
+    if (doc.status === 'annulé' || doc.status === 'converti') {
+      res.status(400).json({ error: 'Ce document ne peut plus être validé' });
       return;
     }
 
@@ -431,14 +432,19 @@ router.post('/:id/validate', requireRole('admin', 'user'), async (req: AuthReque
 
     doc.validated_by = req.user!.id;
 
-    for (const line of lines) {
-      if (!line.product_id) continue;
-      const qty = movementType === 'sortie' ? -line.quantity : line.quantity;
-      await conn.execute("UPDATE products SET stock = stock + ?, updated_at = NOW() WHERE id = ?", [qty, line.product_id]);
-      await conn.execute(
-        `INSERT INTO stock_movements (id, product_id, document_id, movement_type, quantity, unit_price, reference, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [generateId(), line.product_id, doc.id, movementType === 'entrée' ? 'entrée' : 'sortie', line.quantity, line.unit_price, doc.doc_number, `Document: ${doc.doc_number}`, req.user!.id]
-      );
+    const [existingMovements] = await conn.execute('SELECT COUNT(*) as cnt FROM stock_movements WHERE document_id = ?', [id]) as any;
+    const hasStockMovements = existingMovements[0].cnt > 0;
+
+    if (!hasStockMovements) {
+      for (const line of lines) {
+        if (!line.product_id) continue;
+        const qty = movementType === 'sortie' ? -line.quantity : line.quantity;
+        await conn.execute("UPDATE products SET stock = stock + ?, updated_at = NOW() WHERE id = ?", [qty, line.product_id]);
+        await conn.execute(
+          `INSERT INTO stock_movements (id, product_id, document_id, movement_type, quantity, unit_price, reference, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [generateId(), line.product_id, doc.id, movementType === 'entrée' ? 'entrée' : 'sortie', line.quantity, line.unit_price, doc.doc_number, `Document: ${doc.doc_number}`, req.user!.id]
+        );
+      }
     }
 
     if (doc.client_id) {
