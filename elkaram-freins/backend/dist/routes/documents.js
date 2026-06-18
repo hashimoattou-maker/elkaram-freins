@@ -281,10 +281,6 @@ router.put('/:id', (0, auth_1.requireRole)('admin', 'user'), async (req, res) =>
             return;
         }
         const existing = existingRows[0];
-        if (existing.status !== 'brouillon') {
-            res.status(400).json({ error: 'Seuls les documents en brouillon peuvent être modifiés' });
-            return;
-        }
         const { date, dueDate, clientId, supplierId, matricule, taxRate, discount, discountType, shipping, notes, terms, lines: rawLines, designId } = req.body;
         if (rawLines && Array.isArray(rawLines) && rawLines.length > 0) {
             const lines = rawLines.map(mapLineRequest);
@@ -384,6 +380,7 @@ router.delete('/:id', (0, auth_1.requireRole)('admin', 'user'), async (req, res)
         const conn = await database_1.default.getConnection();
         try {
             await conn.beginTransaction();
+            await conn.execute('DELETE FROM stock_movements WHERE document_id = ?', [id]);
             await conn.execute('DELETE FROM document_lines WHERE document_id = ?', [id]);
             await conn.execute('DELETE FROM documents WHERE id = ?', [id]);
             await conn.commit();

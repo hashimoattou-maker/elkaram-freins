@@ -223,6 +223,9 @@ export default function SalesDocumentFormPage() {
 
       if (isEdit && id) {
         await documentsApi.updateDocument(id, data);
+        if (status === "confirmé") {
+          await documentsApi.validateDocument(id);
+        }
       } else {
         const doc = await documentsApi.createDocument(data);
         if (status === "confirmé") {
