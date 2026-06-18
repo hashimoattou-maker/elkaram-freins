@@ -576,45 +576,125 @@ router.get('/:id/pdf', async (req: AuthRequest, res: Response) => {
 });
 
 router.post('/:id/payment', requireRole('admin', 'user'), async (req: AuthRequest, res: Response) => {
+  const conn = await pool.getConnection();
   try {
     const { id } = req.params;
-    const { amount } = req.body;
+    const { amount, paymentMethod, paymentAccount, paymentDate, note } = req.body;
 
     if (!amount || amount <= 0) {
       res.status(400).json({ error: 'Montant de paiement invalide' });
       return;
     }
 
-    const [docRows] = await pool.execute('SELECT * FROM documents WHERE id = ?', [id]) as any;
+    const [docRows] = await conn.execute('SELECT * FROM documents WHERE id = ?', [id]) as any;
     if (docRows.length === 0) {
       res.status(404).json({ error: 'Document non trouvé' });
       return;
     }
     const doc = docRows[0];
-    if (doc.status !== 'confirmé') {
-      res.status(400).json({ error: 'Seuls les documents confirmés peuvent être payés' });
-      return;
-    }
 
     const newPaid = Number(doc.paid_amount || 0) + Number(amount);
-    if (newPaid > Number(doc.total)) {
+    if (newPaid > Number(doc.total) + 0.01) {
       res.status(400).json({ error: 'Le montant payé dépasse le total du document' });
       return;
     }
 
-    await pool.execute("UPDATE documents SET paid_amount = ?, updated_at = NOW() WHERE id = ?", [newPaid, id]);
+    await conn.beginTransaction();
+
+    const paymentId = `pay-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    await conn.execute(
+      'INSERT INTO payments (id, document_id, amount, payment_method, payment_account, payment_date, note, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [paymentId, id, amount, paymentMethod || 'espèces', paymentAccount || '', paymentDate || new Date().toISOString().slice(0, 19).replace('T', ' '), note || '', req.user!.id]
+    );
+
+    await conn.execute("UPDATE documents SET paid_amount = ?, updated_at = NOW() WHERE id = ?", [newPaid, id]);
 
     if (doc.client_id) {
-      const [balRows] = await pool.execute("SELECT COALESCE(SUM(total - COALESCE(paid_amount, 0)), 0) as bal FROM documents WHERE client_id = ? AND status = 'confirmé'", [doc.client_id]) as any;
-      await pool.execute("UPDATE clients SET balance = ?, updated_at = NOW() WHERE id = ?", [Number(balRows[0].bal || 0), doc.client_id]);
+      const [balRows] = await conn.execute("SELECT COALESCE(SUM(total - COALESCE(paid_amount, 0)), 0) as bal FROM documents WHERE client_id = ? AND status = 'confirmé'", [doc.client_id]) as any;
+      await conn.execute("UPDATE clients SET balance = ?, updated_at = NOW() WHERE id = ?", [Number(balRows[0].bal || 0), doc.client_id]);
+    }
+    if (doc.supplier_id) {
+      const [balRows] = await conn.execute("SELECT COALESCE(SUM(total - COALESCE(paid_amount, 0)), 0) as bal FROM documents WHERE supplier_id = ? AND status = 'confirmé'", [doc.supplier_id]) as any;
+      await conn.execute("UPDATE suppliers SET balance = ?, updated_at = NOW() WHERE id = ?", [Number(balRows[0].bal || 0), doc.supplier_id]);
     }
 
+    await conn.commit();
+
     await pool.execute('INSERT INTO audit_log (user_id, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?)',
-      [req.user!.id, 'payment', 'document', id, `Paiement de ${amount} DA sur ${doc.doc_number}`]);
+      [req.user!.id, 'payment', 'document', id, `Paiement de ${amount} MAD sur ${doc.doc_number}`]);
 
     res.json({ message: 'Paiement enregistré', paid_amount: newPaid, remaining: Number(doc.total) - newPaid });
   } catch (err) {
+    await conn.rollback();
     res.status(500).json({ error: 'Erreur lors de l\'enregistrement du paiement' });
+  } finally {
+    conn.release();
+  }
+});
+
+router.get('/:id/payments', requireRole('admin', 'user'), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.execute('SELECT * FROM payments WHERE document_id = ? ORDER BY created_at DESC', [id]) as any;
+    res.json(rows.map((r: any) => ({
+      id: r.id,
+      documentId: r.document_id,
+      amount: Number(r.amount),
+      paymentMethod: r.payment_method,
+      paymentAccount: r.payment_account,
+      paymentDate: r.payment_date,
+      note: r.note,
+      createdBy: r.created_by,
+      createdAt: r.created_at,
+    })));
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur lors de la récupération des paiements' });
+  }
+});
+
+router.delete('/:docId/payments/:paymentId', requireRole('admin', 'user'), async (req: AuthRequest, res: Response) => {
+  const conn = await pool.getConnection();
+  try {
+    const { docId, paymentId } = req.params;
+
+    const [payRows] = await conn.execute('SELECT * FROM payments WHERE id = ? AND document_id = ?', [paymentId, docId]) as any;
+    if (payRows.length === 0) {
+      res.status(404).json({ error: 'Paiement non trouvé' });
+      return;
+    }
+    const payment = payRows[0];
+
+    const [docRows] = await conn.execute('SELECT * FROM documents WHERE id = ?', [docId]) as any;
+    if (docRows.length === 0) {
+      res.status(404).json({ error: 'Document non trouvé' });
+      return;
+    }
+    const doc = docRows[0];
+
+    await conn.beginTransaction();
+
+    await conn.execute('DELETE FROM payments WHERE id = ?', [paymentId]);
+
+    const newPaid = Math.max(0, Number(doc.paid_amount || 0) - Number(payment.amount));
+    await conn.execute("UPDATE documents SET paid_amount = ?, updated_at = NOW() WHERE id = ?", [newPaid, docId]);
+
+    if (doc.client_id) {
+      const [balRows] = await conn.execute("SELECT COALESCE(SUM(total - COALESCE(paid_amount, 0)), 0) as bal FROM documents WHERE client_id = ? AND status = 'confirmé'", [doc.client_id]) as any;
+      await conn.execute("UPDATE clients SET balance = ?, updated_at = NOW() WHERE id = ?", [Number(balRows[0].bal || 0), doc.client_id]);
+    }
+    if (doc.supplier_id) {
+      const [balRows] = await conn.execute("SELECT COALESCE(SUM(total - COALESCE(paid_amount, 0)), 0) as bal FROM documents WHERE supplier_id = ? AND status = 'confirmé'", [doc.supplier_id]) as any;
+      await conn.execute("UPDATE suppliers SET balance = ?, updated_at = NOW() WHERE id = ?", [Number(balRows[0].bal || 0), doc.supplier_id]);
+    }
+
+    await conn.commit();
+
+    res.json({ message: 'Paiement supprimé', paid_amount: newPaid, remaining: Number(doc.total) - newPaid });
+  } catch (err) {
+    await conn.rollback();
+    res.status(500).json({ error: 'Erreur lors de la suppression du paiement' });
+  } finally {
+    conn.release();
   }
 });
 

@@ -74,9 +74,9 @@ export default function ClientDetailPage() {
     try {
       await documentsApi.recordPayment(paymentDoc.id, {
         amount: Number(paymentAmount),
-        method: paymentMethod,
-        date: new Date().toISOString().split("T")[0],
-        reference: paymentRef || undefined,
+        paymentMethod: paymentMethod,
+        paymentDate: new Date().toISOString(),
+        note: paymentRef || undefined,
       });
       setPaymentDoc(null);
       setPaymentAmount("");

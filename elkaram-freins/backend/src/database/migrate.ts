@@ -261,6 +261,22 @@ export async function migrate(pool: Pool): Promise<void> {
     try { await conn.execute("ALTER TABLE company_settings ADD COLUMN logo_base64 LONGTEXT AFTER logo_path"); } catch { /* column may already exist */ }
     try { await conn.execute("ALTER TABLE suppliers ADD COLUMN ice VARCHAR(255) AFTER fiscal_id"); } catch { /* column may already exist */ }
 
+    // Payments table
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS payments (
+        id VARCHAR(36) PRIMARY KEY,
+        document_id VARCHAR(36) NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        payment_method VARCHAR(50) NOT NULL DEFAULT 'espèces',
+        payment_account VARCHAR(255) DEFAULT '',
+        payment_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        note TEXT,
+        created_by VARCHAR(36),
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (document_id) REFERENCES documents(id)
+      )
+    `);
+
     // Seed default admin user
     const [userRows] = await conn.execute('SELECT COUNT(*) as count FROM users') as any;
     if (userRows[0].count === 0) {

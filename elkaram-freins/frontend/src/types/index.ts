@@ -230,9 +230,22 @@ export interface StockAdjustment {
 
 export interface PaymentData {
   amount: number;
-  method: string;
-  date: string;
-  reference?: string;
+  paymentMethod: string;
+  paymentAccount?: string;
+  paymentDate: string;
+  note?: string;
+}
+
+export interface PaymentRecord {
+  id: string;
+  documentId: string;
+  amount: number;
+  paymentMethod: string;
+  paymentAccount: string;
+  paymentDate: string;
+  note: string;
+  createdBy: string;
+  createdAt: string;
 }
 
 export interface ApiError {

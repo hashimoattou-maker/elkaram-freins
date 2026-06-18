@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, CheckCircle, Plus, Trash2, Search } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle, Plus, Trash2, Search, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +24,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { documents as documentsApi, suppliers as suppliersApi, products as productsApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
-import type { Document, DocumentLine, Supplier, Product, DocumentType } from "@/types";
+import type { Document, DocumentLine, Supplier, Product, DocumentType, PaymentRecord } from "@/types";
 
 const DOC_TYPE_MAP: Record<string, DocumentType> = {
   bc: "bon_commande",
@@ -45,6 +45,16 @@ export default function PurchaseDocumentFormPage() {
   const [loading, setLoading] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [productResults, setProductResults] = useState<Product[]>([]);
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: "",
+    paymentMethod: "espèces",
+    paymentAccount: "CAISSE COMPTOIR",
+    paymentDate: new Date().toISOString().slice(0, 16),
+    note: "",
+  });
+  const [existingDocTotal, setExistingDocTotal] = useState(0);
+  const [existingDocPaid, setExistingDocPaid] = useState(0);
 
   const [form, setForm] = useState({
     supplierId: "",
@@ -102,6 +112,9 @@ export default function PurchaseDocumentFormPage() {
           shipping: String(doc.shipping),
         });
         setLines(doc.lines.map((l, i) => ({ ...l, id: i + 1 })));
+        setExistingDocTotal(doc.total);
+        setExistingDocPaid(doc.paidAmount || 0);
+        documentsApi.getPayments(doc.id).then((p) => setPayments(p)).catch(() => {});
       }).catch(() => navigate(`/achats/${type}`));
     }
   }, [type, id, isEdit, navigate, searchParams]);
@@ -185,6 +198,41 @@ export default function PurchaseDocumentFormPage() {
   const taxAmount = taxable * (Number(form.taxRate) / 100);
   const shipping = Number(form.shipping);
   const total = taxable + taxAmount + shipping;
+
+  const handleAddPayment = async () => {
+    if (!id || !paymentForm.amount || Number(paymentForm.amount) <= 0) return;
+    try {
+      await documentsApi.recordPayment(id, {
+        amount: Number(paymentForm.amount),
+        paymentMethod: paymentForm.paymentMethod,
+        paymentAccount: paymentForm.paymentAccount,
+        paymentDate: paymentForm.paymentDate,
+        note: paymentForm.note,
+      });
+      const doc = await documentsApi.getDocument(id);
+      setExistingDocPaid(doc.paidAmount || 0);
+      setExistingDocTotal(doc.total);
+      const p = await documentsApi.getPayments(id);
+      setPayments(p);
+      setPaymentForm({ amount: "", paymentMethod: "espèces", paymentAccount: "CAISSE COMPTOIR", paymentDate: new Date().toISOString().slice(0, 16), note: "" });
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: string) => {
+    if (!id) return;
+    try {
+      await documentsApi.deletePayment(id, paymentId);
+      const doc = await documentsApi.getDocument(id);
+      setExistingDocPaid(doc.paidAmount || 0);
+      setExistingDocTotal(doc.total);
+      const p = await documentsApi.getPayments(id);
+      setPayments(p);
+    } catch {
+      // ignore
+    }
+  };
 
   const handleSave = async (status: "brouillon" | "confirmé") => {
     setLoading(true);
@@ -460,6 +508,122 @@ export default function PurchaseDocumentFormPage() {
           </CardContent>
         </Card>
       </div>
+
+      {isEdit && id && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Ajouter un paiement
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Montant *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm((f) => ({ ...f, amount: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Payé sur *</Label>
+                <Input
+                  type="datetime-local"
+                  value={paymentForm.paymentDate}
+                  onChange={(e) => setPaymentForm((f) => ({ ...f, paymentDate: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Mode de paiement *</Label>
+                <Select value={paymentForm.paymentMethod} onValueChange={(v) => setPaymentForm((f) => ({ ...f, paymentMethod: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="espèces">Espèces</SelectItem>
+                    <SelectItem value="chèque">Chèque</SelectItem>
+                    <SelectItem value="virement">Virement</SelectItem>
+                    <SelectItem value="carte">Carte</SelectItem>
+                    <SelectItem value="traite">Traite</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Compte de paiement</Label>
+                <Select value={paymentForm.paymentAccount} onValueChange={(v) => setPaymentForm((f) => ({ ...f, paymentAccount: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CAISSE COMPTOIR">CAISSE COMPTOIR</SelectItem>
+                    <SelectItem value="BANQUE">BANQUE</SelectItem>
+                    <SelectItem value="CCP">CCP</SelectItem>
+                    <SelectItem value="CHÈQUE">CHÈQUE</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Note de paiement</Label>
+                <Input
+                  placeholder="Note..."
+                  value={paymentForm.note}
+                  onChange={(e) => setPaymentForm((f) => ({ ...f, note: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="text-sm space-y-1">
+                <p>Total : <span className="font-bold">{formatCurrency(total)}</span></p>
+                <p>Payé : <span className="font-bold text-green-600">{formatCurrency(existingDocPaid)}</span></p>
+                <p>Reste à payer : <span className={`font-bold ${existingDocTotal - existingDocPaid > 0 ? "text-red-600" : "text-green-600"}`}>{formatCurrency(Math.max(0, total - existingDocPaid))}</span></p>
+              </div>
+              <Button onClick={handleAddPayment} disabled={!paymentForm.amount || Number(paymentForm.amount) <= 0}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Enregistrer le paiement
+              </Button>
+            </div>
+
+            {payments.length > 0 && (
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Montant</TableHead>
+                      <TableHead>Mode</TableHead>
+                      <TableHead>Compte</TableHead>
+                      <TableHead>Note</TableHead>
+                      <TableHead className="w-10"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payments.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="text-xs">{new Date(p.paymentDate).toLocaleString("fr-FR")}</TableCell>
+                        <TableCell className="font-medium text-green-600">{formatCurrency(p.amount)}</TableCell>
+                        <TableCell className="text-xs">{p.paymentMethod}</TableCell>
+                        <TableCell className="text-xs">{p.paymentAccount}</TableCell>
+                        <TableCell className="text-xs">{p.note}</TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="text-red-600 h-8 w-8" onClick={() => handleDeletePayment(p.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={() => navigate(`/achats/${type}`)}>

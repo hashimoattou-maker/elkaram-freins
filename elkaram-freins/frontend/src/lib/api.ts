@@ -19,6 +19,7 @@ import type {
   ImportResult,
   StockAdjustment,
   PaymentData,
+  PaymentRecord,
 } from "@/types";
 
 const api = axios.create({
@@ -123,7 +124,11 @@ export const documents = {
   getDocumentPDF: (id: string) =>
     api.get(`/documents/${id}/pdf`, { responseType: "blob" }).then((r) => r.data),
   recordPayment: (id: string, data: PaymentData) =>
-    api.post<Document>(`/documents/${id}/payment`, data).then((r) => r.data),
+    api.post(`/documents/${id}/payment`, data).then((r) => r.data),
+  getPayments: (docId: string) =>
+    api.get<PaymentRecord[]>(`/documents/${docId}/payments`).then((r) => r.data),
+  deletePayment: (docId: string, paymentId: string) =>
+    api.delete(`/documents/${docId}/payments/${paymentId}`).then((r) => r.data),
 };
 
 export const dashboard = {
