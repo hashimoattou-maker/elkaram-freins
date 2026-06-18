@@ -60,6 +60,7 @@ export default function PurchaseDocumentListPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchDocs = useCallback(async () => {
     if (!docType) return;
@@ -91,13 +92,15 @@ export default function PurchaseDocumentListPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async () => {
+    if (!deleteId) return;
     try {
-      await documentsApi.deleteDocument(id);
+      await documentsApi.deleteDocument(deleteId);
       fetchDocs();
     } catch {
       // ignore
     }
+    setDeleteId(null);
   };
 
   const handleConvert = async (doc: Document) => {
@@ -208,7 +211,7 @@ export default function PurchaseDocumentListPage() {
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => navigate(`${basePath}/${doc.id}/edit`)} title="Modifier">
                             <Edit className="h-5 w-5" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700" onClick={() => handleDelete(doc.id)} title="Supprimer">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700" onClick={() => setDeleteId(doc.id)} title="Supprimer">
                             <Trash2 className="h-5 w-5" />
                           </Button>
                           {doc.status === "brouillon" && (
@@ -243,6 +246,21 @@ export default function PurchaseDocumentListPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer ce document ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600">Supprimer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

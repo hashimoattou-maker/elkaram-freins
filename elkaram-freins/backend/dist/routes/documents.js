@@ -376,21 +376,25 @@ router.put('/:id', (0, auth_1.requireRole)('admin', 'user'), async (req, res) =>
 router.delete('/:id', (0, auth_1.requireRole)('admin', 'user'), async (req, res) => {
     try {
         const { id } = req.params;
-        const [existingRows] = await database_1.default.execute('SELECT id, status FROM documents WHERE id = ?', [id]);
+        const [existingRows] = await database_1.default.execute('SELECT id FROM documents WHERE id = ?', [id]);
         if (existingRows.length === 0) {
             res.status(404).json({ error: 'Document non trouvé' });
             return;
         }
-        if (existingRows[0].status === 'annulé') {
-            res.status(400).json({ error: 'Le document est déjà annulé' });
-            return;
+        const conn = await database_1.default.getConnection();
+        try {
+            await conn.beginTransaction();
+            await conn.execute('DELETE FROM document_lines WHERE document_id = ?', [id]);
+            await conn.execute('DELETE FROM documents WHERE id = ?', [id]);
+            await conn.commit();
         }
-        await database_1.default.execute("UPDATE documents SET status = 'annulé', updated_at = NOW() WHERE id = ?", [id]);
-        await database_1.default.execute('INSERT INTO audit_log (user_id, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?)', [req.user.id, 'cancel', 'document', id, 'Annulation de document']);
-        res.json({ message: 'Document annulé avec succès' });
+        finally {
+            conn.release();
+        }
+        res.json({ message: 'Document supprimé avec succès' });
     }
     catch (err) {
-        res.status(500).json({ error: 'Erreur lors de l\'annulation du document' });
+        res.status(500).json({ error: 'Erreur lors de la suppression' });
     }
 });
 router.post('/:id/validate', (0, auth_1.requireRole)('admin', 'user'), async (req, res) => {
