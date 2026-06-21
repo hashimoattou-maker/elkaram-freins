@@ -108,8 +108,8 @@ export default function SalesDocumentListPage() {
   const handleConvert = async (doc: Document) => {
     try {
       const targetTypeMap: Record<string, DocumentType> = {
-        devis: "facture_vente",
-        commande_client: "facture_vente",
+        devis: "bon_livraison",
+        commande_client: "bon_livraison",
         bon_livraison: "facture_vente",
         facture_vente: "avoir_vente",
       };

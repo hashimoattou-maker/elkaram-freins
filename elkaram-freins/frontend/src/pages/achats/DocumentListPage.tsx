@@ -106,7 +106,7 @@ export default function PurchaseDocumentListPage() {
   const handleConvert = async (doc: Document) => {
     try {
       const targetTypeMap: Record<string, DocumentType> = {
-        bon_commande: "facture_achat",
+        bon_commande: "bon_achat",
         bon_achat: "facture_achat",
         facture_achat: "avoir_achat",
       };
